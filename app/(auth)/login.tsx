@@ -1,11 +1,11 @@
 // ============================================
-// LAIKITA - Login Screen (fixed for web + mobile)
+// LAIKITA - Login Screen (Optimizado)
 // ============================================
 
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, KeyboardAvoidingView,
-  Platform, Alert, TouchableOpacity,
+  Platform, TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,100 +13,58 @@ import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useAuth } from '@/context/AuthContext';
-import Input from '@/components/ui/Input';
+import { loginFields } from '@/constants/FormFields';
+import FormBuilder from '@/components/ui/FormBuilder';
 import Button from '@/components/ui/Button';
-
-function showAlert(title: string, message: string) {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}: ${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
-}
 
 export default function LoginScreen() {
   const theme = useThemeColors();
   const router = useRouter();
   const { login, isLoading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [values, setValues] = useState<Record<string, string>>({ email: '', password: '' });
+
+  const onChange = (key: string, value: string) => {
+    setValues(prev => ({ ...prev, [key]: value }));
+  };
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      showAlert('Error', 'Por favor completa todos los campos');
+    if (!values.email || !values.password) {
+      Platform.OS === 'web'
+        ? window.alert('Por favor completa todos los campos')
+        : null;
       return;
     }
-    const success = await login(email, password);
-    if (!success) {
-      // El AuthContext ya muestra el error
-    }
+    await login(values.email, values.password);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <View style={[styles.logoCircle, { backgroundColor: Colors.primarySoft }]}>
-                <Ionicons name="paw" size={44} color={Colors.primary} />
-              </View>
+            <View style={[styles.logoCircle, { backgroundColor: Colors.primarySoft }]}>
+              <Ionicons name="paw" size={44} color={Colors.primary} />
             </View>
             <Text style={[styles.brandName, { color: theme.text }]}>Laikita</Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Administración Veterinaria
-            </Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Administración Veterinaria</Text>
           </View>
 
           <View style={[styles.formCard, { backgroundColor: theme.surface, borderColor: theme.borderLight }]}>
             <Text style={[styles.formTitle, { color: theme.text }]}>Iniciar sesión</Text>
-
-            <Input
-              label="Correo electrónico"
-              icon="mail-outline"
-              placeholder="admin@laikita.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <Input
-              label="Contraseña"
-              icon="lock-closed-outline"
-              placeholder="••••••••"
-              value={password}
-              onChangeText={setPassword}
-              isPassword
-            />
+            <FormBuilder fields={loginFields} values={values} onChange={onChange} />
             <TouchableOpacity style={styles.forgotBtn}>
-              <Text style={[styles.forgotText, { color: Colors.primary }]}>
-                ¿Olvidaste tu contraseña?
-              </Text>
+              <Text style={[styles.forgotText, { color: Colors.primary }]}>¿Olvidaste tu contraseña?</Text>
             </TouchableOpacity>
-            <Button
-              title="Ingresar"
-              onPress={handleLogin}
-              loading={isLoading}
-              fullWidth
-              size="lg"
-              style={{ marginTop: 8 }}
-            />
+            <Button title="Ingresar" onPress={handleLogin} loading={isLoading} fullWidth size="lg" style={{ marginTop: 8 }} />
           </View>
 
           <View style={styles.registerRow}>
-            <Text style={[styles.registerText, { color: theme.textSecondary }]}>
-              ¿No tienes cuenta?{' '}
-            </Text>
+            <Text style={[styles.registerText, { color: theme.textSecondary }]}>¿No tienes cuenta? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={[styles.registerLink, { color: Colors.primary }]}>
-                Regístrate
-              </Text>
+              <Text style={[styles.registerLink, { color: Colors.primary }]}>Regístrate</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -119,8 +77,7 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, justifyContent: 'center' },
   content: { padding: Layout.spacing.lg, maxWidth: Layout.maxContentWidth, width: '100%', alignSelf: 'center' },
   header: { alignItems: 'center', marginBottom: 32 },
-  logoContainer: { marginBottom: 16 },
-  logoCircle: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
+  logoCircle: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   brandName: { fontSize: 36, fontWeight: '800', letterSpacing: -1 },
   subtitle: { fontSize: Layout.fontSize.md, marginTop: 4 },
   formCard: { borderRadius: Layout.radius.xl, padding: Layout.spacing.lg, borderWidth: 1, shadowColor: 'rgba(0,0,0,0.06)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 12, elevation: 3 },
