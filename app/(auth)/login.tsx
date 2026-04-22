@@ -55,10 +55,24 @@ export default function LoginScreen() {
           <View style={[styles.formCard, { backgroundColor: theme.surface, borderColor: theme.borderLight }]}>
             <Text style={[styles.formTitle, { color: theme.text }]}>Iniciar sesión</Text>
             <FormBuilder fields={loginFields} values={values} onChange={onChange} />
-            <TouchableOpacity style={styles.forgotBtn}>
-              <Text style={[styles.forgotText, { color: Colors.primary }]}>¿Olvidaste tu contraseña?</Text>
+
+            <TouchableOpacity
+              style={styles.forgotBtn}
+              onPress={() => router.push('/(auth)/forgot-password')}
+            >
+              <Text style={[styles.forgotText, { color: Colors.primary }]}>
+                ¿Olvidaste tu contraseña?
+              </Text>
             </TouchableOpacity>
-            <Button title="Ingresar" onPress={handleLogin} loading={isLoading} fullWidth size="lg" style={{ marginTop: 8 }} />
+
+            <Button
+              title="Ingresar"
+              onPress={handleLogin}
+              loading={isLoading}
+              fullWidth
+              size="lg"
+              style={{ marginTop: 8 }}
+            />
           </View>
 
           <View style={styles.registerRow}>
@@ -80,7 +94,16 @@ const styles = StyleSheet.create({
   logoCircle: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   brandName: { fontSize: 36, fontWeight: '800', letterSpacing: -1 },
   subtitle: { fontSize: Layout.fontSize.md, marginTop: 4 },
-  formCard: { borderRadius: Layout.radius.xl, padding: Layout.spacing.lg, borderWidth: 1, shadowColor: 'rgba(0,0,0,0.06)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 12, elevation: 3 },
+  formCard: {
+    borderRadius: Layout.radius.xl,
+    padding: Layout.spacing.lg,
+    borderWidth: 1,
+    shadowColor: 'rgba(0,0,0,0.06)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 3
+  },
   formTitle: { fontSize: Layout.fontSize.xl, fontWeight: '700', marginBottom: 20 },
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 8 },
   forgotText: { fontSize: Layout.fontSize.sm, fontWeight: '500' },

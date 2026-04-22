@@ -11,6 +11,8 @@ import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { can } from '@/utils/permissions';
 
 function TabIcon({
   name,
@@ -50,6 +52,7 @@ function CartTabIcon({ color, focused }: { color: string; focused: boolean }) {
 
 export default function TabsLayout() {
   const theme = useThemeColors();
+  const { user } = useAuth();
 
   return (
     <Tabs
@@ -86,27 +89,33 @@ export default function TabsLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="owners"
         options={{
+          href: can(user, 'owners', 'view') ? undefined : null,
           title: 'Dueños',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name={focused ? 'people' : 'people-outline'} color={color} focused={focused} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="pets"
         options={{
+          href: can(user, 'pets', 'view') ? undefined : null,
           title: 'Mascotas',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name={focused ? 'paw' : 'paw-outline'} color={color} focused={focused} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="treatments"
         options={{
+          href: can(user, 'treatments', 'view') ? undefined : null,
           title: 'Citas',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
@@ -117,9 +126,11 @@ export default function TabsLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="store"
         options={{
+          href: can(user, 'store', 'view') ? undefined : null,
           title: 'Tienda',
           tabBarIcon: ({ color, focused }) => (
             <CartTabIcon color={color} focused={focused} />

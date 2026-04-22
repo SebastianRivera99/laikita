@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const LOCAL_IP = '192.168.1.9'; // ← CAMBIA ESTO por tu IP de ipconfig
+const LOCAL_IP = '192.168.11.4'; // ← CAMBIA ESTO por tu IP de ipconfig
 
 const BASE_URL = Platform.OS === 'web'
   ? 'http://localhost/laikita-backend/api'
@@ -40,6 +40,12 @@ export const authAPI = {
     request('auth.php?action=register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password }),
+    }),
+
+  changePassword: (email: string, newPassword: string) =>
+    request('auth.php?action=changePassword', {
+      method: 'POST',
+      body: JSON.stringify({ email, newPassword }),
     }),
 };
 

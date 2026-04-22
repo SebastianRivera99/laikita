@@ -6,14 +6,16 @@
 import React, { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator } from 'react-native';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { DataProvider } from '@/context/DataContext';
 import { CartProvider } from '@/context/CartContext';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { Colors } from '@/constants/Colors';
 
 function RootLayoutNav() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const theme = useThemeColors();
@@ -24,7 +26,7 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || isLoading) return;
 
     const timeout = setTimeout(() => {
       const inAuthGroup = segments[0] === '(auth)';
@@ -37,7 +39,25 @@ function RootLayoutNav() {
     }, 0);
 
     return () => clearTimeout(timeout);
-  }, [isAuthenticated, segments, isMounted]);
+  }, [isAuthenticated, isLoading, segments, isMounted, router]);
+
+  if (!isMounted || isLoading) {
+    return (
+      <>
+        <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: theme.background,
+          }}
+        >
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </>
+    );
+  }
 
   return (
     <>

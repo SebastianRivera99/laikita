@@ -1,11 +1,22 @@
 // ============================================
-// LAIKITA - AuthContext (conectado a XAMPP)
+// LAIKITA - AuthContext (con persistencia sesión)
 // ============================================
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+  useEffect,
+} from 'react';
 import { Alert, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, AuthState } from '@/types';
 import { authAPI } from '@/utils/api';
+
+// clave para guardar sesión
+const AUTH_STORAGE_KEY = 'laikita_auth_user';
 
 // Alert compatible con web y móvil
 function showAlert(title: string, message: string) {
@@ -18,7 +29,7 @@ function showAlert(title: string, message: string) {
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
 }
 
@@ -28,23 +39,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
-    isLoading: false,
+    isLoading: true,
   });
+
+  // cargar sesión guardada al iniciar
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+
+        if (storedUser) {
+          const user: User = JSON.parse(storedUser);
+          setState({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        } else {
+          setState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error cargando sesión:', error);
+        setState({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      }
+    };
+
+    loadSession();
+  }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true }));
+
     try {
       console.log('Intentando login con:', email);
       const data = await authAPI.login(email, password);
       console.log('Respuesta login:', data);
+
       const user: User = {
         id: String(data.user.id),
         email: data.user.email,
         name: data.user.name,
-        role: data.user.role || 'admin',
+        role: data.user.role || 'receptionist',
         createdAt: data.user.created_at || '',
       };
-      setState({ user, isAuthenticated: true, isLoading: false });
+
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+
+      setState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+
       return true;
     } catch (error: any) {
       console.error('Login error:', error);
@@ -54,22 +108,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
-    setState({ user: null, isAuthenticated: false, isLoading: false });
+  const logout = useCallback(async () => {
+    try {
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (error) {
+      console.error('Error cerrando sesión:', error);
+    }
+
+    setState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true }));
+
     try {
       const data = await authAPI.register(name, email, password);
+
       const user: User = {
         id: String(data.user.id),
         email: data.user.email,
         name: data.user.name,
-        role: data.user.role || 'admin',
-        createdAt: '',
+        role: data.user.role || 'receptionist',
+        createdAt: data.user.created_at || '',
       };
-      setState({ user, isAuthenticated: true, isLoading: false });
+
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+
+      setState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+
       return true;
     } catch (error: any) {
       console.error('Register error:', error);
