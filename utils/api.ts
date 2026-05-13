@@ -1,10 +1,9 @@
 import { Platform } from 'react-native';
 
-const LOCAL_IP = '192.168.11.4'; // ← CAMBIA ESTO por tu IP de ipconfig
+const LOCAL_IP = '192.168.11.4'; // ← CAMBIAR ESTO por tu IP de ipconfig
 
-const BASE_URL = Platform.OS === 'web'
-  ? 'http://localhost/laikita-backend/api'
-  : `http://${LOCAL_IP}/laikita-backend/api`;
+const BASE_URL = 'https://sebastianrivera.alwaysdata.net/laikita-backend/api';
+
 
 // ---- Generic fetch helper ----
 async function request(endpoint: string, options: RequestInit = {}) {
@@ -67,7 +66,7 @@ export const ownersAPI = {
     request(`owners.php?id=${id}`, { method: 'DELETE' }),
 };
 
-// ---- PETS ----
+// ---- PETS ----   
 export const petsAPI = {
   getAll: (search?: string) =>
     request(`pets.php${search ? `?search=${search}` : ''}`),
