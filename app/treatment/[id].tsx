@@ -36,18 +36,42 @@ export default function TreatmentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getTreatment, updateTreatment, deleteTreatment, getPet, getOwner } = useData();
 
-  const treatment = getTreatment(id!);
+  // Convertir ID a número
+  const treatmentId = Number(id);
+  const treatment = getTreatment(treatmentId);
+
   if (!treatment) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-        <Text style={{ color: theme.text, padding: 20 }}>Tratamiento no encontrado</Text>
+        <View style={[styles.header, { borderBottomColor: theme.borderLight }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Detalle cita</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Ionicons name="medkit-outline" size={64} color={theme.textTertiary} />
+          <Text style={{ color: theme.text, fontSize: 18, fontWeight: '600', marginTop: 16 }}>
+            Tratamiento no encontrado
+          </Text>
+          <Text style={{ color: theme.textSecondary, fontSize: 14, marginTop: 8 }}>
+            ID: {id}
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ marginTop: 20, backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
+          >
+            <Text style={{ color: '#FFF' }}>Volver</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
-  const pet = getPet(treatment.petId);
-  const owner = getOwner(treatment.ownerId);
-  const typeColor = Colors.treatmentColors[treatment.type] || Colors.primary;
+  const pet = getPet(Number(treatment.petId));
+  const owner = getOwner(Number(treatment.ownerId));
+  const typeColor = Colors.treatmentColors[treatment.type as keyof typeof Colors.treatmentColors] || Colors.primary;
 
   const statusBadgeVariant = (status: TreatmentStatus) => {
     switch (status) {
@@ -59,7 +83,7 @@ export default function TreatmentDetailScreen() {
   };
 
   const handleStatusChange = (newStatus: TreatmentStatus) => {
-    updateTreatment(treatment.id, { status: newStatus });
+    updateTreatment(treatmentId, { status: newStatus });
   };
 
   const handleDelete = () => {
@@ -68,7 +92,10 @@ export default function TreatmentDetailScreen() {
       {
         text: 'Eliminar',
         style: 'destructive',
-        onPress: () => { deleteTreatment(treatment.id); router.back(); },
+        onPress: () => {
+          deleteTreatment(treatmentId);
+          router.back();
+        },
       },
     ]);
   };
@@ -93,11 +120,11 @@ export default function TreatmentDetailScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.treatmentTitle, { color: theme.text }]}>{treatment.title}</Text>
                 <Text style={[styles.treatmentType, { color: typeColor }]}>
-                  {treatmentTypeLabel[treatment.type]}
+                  {treatmentTypeLabel[treatment.type as keyof typeof treatmentTypeLabel]}
                 </Text>
               </View>
               <Badge
-                text={treatmentStatusLabel[treatment.status]}
+                text={treatmentStatusLabel[treatment.status as keyof typeof treatmentStatusLabel]}
                 variant={statusBadgeVariant(treatment.status)}
               />
             </View>
@@ -130,7 +157,7 @@ export default function TreatmentDetailScreen() {
           {pet && (
             <Card onPress={() => router.push(`/pet/${pet.id}` as any)}>
               <View style={styles.entityRow}>
-                <Text style={styles.entityEmoji}>{speciesEmoji[pet.species]}</Text>
+                <Text style={styles.entityEmoji}>{speciesEmoji[pet.species as keyof typeof speciesEmoji]}</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.entityName, { color: theme.text }]}>{pet.name}</Text>
                   <Text style={[styles.entityMeta, { color: theme.textSecondary }]}>
@@ -241,5 +268,5 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: Layout.fontSize.md, fontWeight: '600', marginBottom: 6 },
   descText: { fontSize: Layout.fontSize.md, lineHeight: 22 },
   sectionTitle: { fontSize: Layout.fontSize.lg, fontWeight: '700', marginTop: 4 },
-  statusActions: { flexDirection: 'row', gap: 10 },
+  statusActions: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
 });

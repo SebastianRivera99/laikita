@@ -1,7 +1,3 @@
-// ============================================
-// LAIKITA - Owners List Screen
-// ============================================
-
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -12,7 +8,7 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
@@ -27,8 +23,17 @@ import { getInitials, formatPhone } from '@/utils/formatters';
 export default function OwnersScreen() {
   const theme = useThemeColors();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { owners, getPetsByOwner } = useData();
   const [search, setSearch] = useState('');
+
+  const goBack = () => {
+    if (from === 'admin') {
+      router.push('/(admin)');
+    } else {
+      router.back();
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!search) return owners;
@@ -43,9 +48,9 @@ export default function OwnersScreen() {
   }, [owners, search]);
 
   const renderOwner = ({ item }: { item: typeof owners[0] }) => {
-    const petCount = getPetsByOwner(item.id).length;
+    const petCount = getPetsByOwner(Number(item.id)).length;
     return (
-      <Card onPress={() => router.push(`/owner/${item.id}` as any)} style={styles.card}>
+      <Card onPress={() => router.push(`/owner/${item.id}`)} style={styles.card}>
         <View style={styles.row}>
           <View style={[styles.avatar, { backgroundColor: Colors.primarySoft }]}>
             <Text style={[styles.avatarText, { color: Colors.primaryDark }]}>
@@ -75,12 +80,14 @@ export default function OwnersScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <View style={styles.wrapper}>
-        {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
           <Text style={[styles.title, { color: theme.text }]}>Dueños</Text>
           <TouchableOpacity
             style={[styles.addBtn, { backgroundColor: Colors.primary }]}
-            onPress={() => router.push('/owner/create' as any)}
+            onPress={() => router.push('/owner/create')}
           >
             <Ionicons name="add" size={24} color="#FFF" />
           </TouchableOpacity>
@@ -100,7 +107,7 @@ export default function OwnersScreen() {
               title="Sin dueños registrados"
               description="Agrega el primer dueño para empezar a gestionar tu veterinaria"
               actionLabel="+ Agregar dueño"
-              onAction={() => router.push('/owner/create' as any)}
+              onAction={() => router.push('/owner/create')}
             />
           }
         />
@@ -126,7 +133,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: Platform.OS === 'android' ? 16 : 0,
   },
-  title: { fontSize: Layout.fontSize.title, fontWeight: '800' },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: Layout.fontSize.title, fontWeight: '800', flex: 1, textAlign: 'center' },
   addBtn: {
     width: 42,
     height: 42,

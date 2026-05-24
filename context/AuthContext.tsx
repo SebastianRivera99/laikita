@@ -1,33 +1,15 @@
 // ============================================
-// LAIKITA - AuthContext (con persistencia sesión)
+// LAIKITA - AuthContext con Supabase
 // ============================================
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  ReactNode,
-  useEffect,
-} from 'react';
-import { Alert, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, AuthState } from '@/types';
-import { authAPI } from '@/utils/api';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { authService } from '@/services/auth.service';
+import { User } from '@/types';
 
-// clave para guardar sesión
-const AUTH_STORAGE_KEY = 'laikita_auth_user';
-
-// Alert compatible con web y móvil
-function showAlert(title: string, message: string) {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}: ${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
-}
-
-interface AuthContextType extends AuthState {
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
@@ -36,131 +18,90 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false,
-    isLoading: true,
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // cargar sesión guardada al iniciar
+  // Cargar sesión al iniciar la app
   useEffect(() => {
-    const loadSession = async () => {
+    const loadUser = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-
-        if (storedUser) {
-          const user: User = JSON.parse(storedUser);
-          setState({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } else {
-          setState({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
+        const session = await authService.getCurrentUser();
+        if (session?.profile) {
+          setUser({
+            id: String(session.profile.id),
+            email: session.profile.email,
+            name: session.profile.name,
+            role: session.profile.role,
+            avatar: session.profile.avatar,
+            createdAt: session.profile.created_at,
           });
         }
       } catch (error) {
-        console.error('Error cargando sesión:', error);
-        setState({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
+        console.error('Error loading session:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
-
-    loadSession();
+    loadUser();
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    setState(prev => ({ ...prev, isLoading: true }));
-
+    setIsLoading(true);
     try {
-      console.log('Intentando login con:', email);
-      const data = await authAPI.login(email, password);
-      console.log('Respuesta login:', data);
-
-      const user: User = {
-        id: String(data.user.id),
-        email: data.user.email,
-        name: data.user.name,
-        role: data.user.role || 'receptionist',
-        createdAt: data.user.created_at || '',
-      };
-
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-
-      setState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
+      const { profile } = await authService.login(email, password);
+      setUser({
+        id: String(profile.id),
+        email: profile.email,
+        name: profile.name,
+        role: profile.role,
+        avatar: profile.avatar,
+        createdAt: profile.created_at,
       });
-
       return true;
     } catch (error: any) {
       console.error('Login error:', error);
-      showAlert('Error de login', error.message || 'No se pudo conectar al servidor');
-      setState(prev => ({ ...prev, isLoading: false }));
+      alert(error.message || 'Error al iniciar sesión');
       return false;
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   const logout = useCallback(async () => {
+    setIsLoading(true);
     try {
-      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      await authService.logout();
+      setUser(null);
     } catch (error) {
-      console.error('Error cerrando sesión:', error);
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoading(false);
     }
-
-    setState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string): Promise<boolean> => {
-    setState(prev => ({ ...prev, isLoading: true }));
-
+    setIsLoading(true);
     try {
-      const data = await authAPI.register(name, email, password);
-
-      const user: User = {
-        id: String(data.user.id),
-        email: data.user.email,
-        name: data.user.name,
-        role: data.user.role || 'receptionist',
-        createdAt: data.user.created_at || '',
-      };
-
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-
-      setState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-
-      return true;
+      await authService.register(name, email, password);
+      // Después de registrar, iniciar sesión automáticamente
+      return await login(email, password);
     } catch (error: any) {
       console.error('Register error:', error);
-      showAlert('Error de registro', error.message || 'No se pudo crear la cuenta');
-      setState(prev => ({ ...prev, isLoading: false }));
+      alert(error.message || 'Error al registrar usuario');
       return false;
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [login]);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, register }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth(): AuthContextType {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth debe usarse dentro de AuthProvider');
   return context;

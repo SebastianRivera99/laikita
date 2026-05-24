@@ -1,8 +1,8 @@
 // ============================================
-// LAIKITA - Store Screen
+// LAIKITA - Store Screen (con Supabase)
 // ============================================
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,11 +19,10 @@ import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useCart } from '@/context/CartContext';
-import { mockProducts } from '@/data/mockData';
+import { supabase } from '@/lib/supabase';
 import Card from '@/components/ui/Card';
 import SearchBar from '@/components/ui/SearchBar';
 import Button from '@/components/ui/Button';
-import Badge from '@/components/ui/Badge';
 import {
   formatCurrency,
   categoryLabel,
@@ -38,6 +37,7 @@ const categories: { key: ProductCategory | 'all'; label: string; emoji: string }
   { key: 'hygiene', label: 'Higiene', emoji: '🧴' },
   { key: 'toys', label: 'Juguetes', emoji: '🎾' },
   { key: 'accessories', label: 'Accesorios', emoji: '🎒' },
+  { key: 'clothing', label: 'Ropa', emoji: '👕' },
 ];
 
 export default function StoreScreen() {
@@ -46,18 +46,74 @@ export default function StoreScreen() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<ProductCategory | 'all'>('all');
   const [showCart, setShowCart] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Cargar productos desde Supabase
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      console.log("=== CARGANDO PRODUCTOS ===");
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+      
+      if (error) {
+        console.error('Error de Supabase:', error);
+      } else {
+        console.log('Productos encontrados:', data?.length);
+        console.log('Primer producto:', JSON.stringify(data?.[0], null, 2));
+        
+        // Mapear los datos al formato esperado por la app
+        const mappedProducts: Product[] = (data || []).map(item => ({
+          id: String(item.id),
+          name: item.name,
+          description: item.description || '',
+          category: item.category,
+          price: item.price,
+          stock: item.stock,
+          brand: item.brand || '',
+          petType: item.pet_type || [],
+          isActive: item.is_active,
+          image: item.image,
+          createdAt: item.created_at,
+        }));
+        
+        setProducts(mappedProducts);
+      }
+    } catch (error) {
+      console.error('❌ Error cargando productos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filtered = useMemo(() => {
-    let result = mockProducts.filter(p => p.isActive);
-    if (category !== 'all') result = result.filter(p => p.category === category);
-    if (search) {
+    console.log('Filtrando productos, total:', products.length);
+    let result = [...products];
+    
+    if (category !== 'all') {
+      result = result.filter(p => p.category === category);
+    }
+    
+    if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(p =>
-        p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)
+        p.name.toLowerCase().includes(q) || 
+        (p.brand && p.brand.toLowerCase().includes(q))
       );
     }
+    
+    console.log('Productos filtrados:', result.length);
     return result;
-  }, [search, category]);
+  }, [products, search, category]);
 
   const handleCheckout = () => {
     Alert.alert(
@@ -69,10 +125,13 @@ export default function StoreScreen() {
 
   const renderProduct = ({ item }: { item: Product }) => {
     const inCart = isInCart(item.id);
+    
     return (
       <Card style={styles.productCard}>
-        <View style={[styles.productImage, { backgroundColor: `${Colors.speciesColors[item.petType[0]] || Colors.primary}15` }]}>
-          <Text style={styles.productEmoji}>{categoryEmoji[item.category]}</Text>
+        <View style={[styles.productImage, { backgroundColor: `${Colors.primary}15` }]}>
+          <Text style={styles.productEmoji}>
+            {categoryEmoji[item.category as keyof typeof categoryEmoji] || '🏪'}
+          </Text>
         </View>
         <View style={styles.productInfo}>
           <Text style={[styles.productBrand, { color: theme.textTertiary }]}>{item.brand}</Text>
@@ -101,7 +160,7 @@ export default function StoreScreen() {
             ) : (
               <TouchableOpacity
                 style={[styles.cartBtn, { backgroundColor: Colors.primarySoft }]}
-                onPress={() => addToCart(item)}
+                onPress={() => addToCart(item as any)}
               >
                 <Ionicons name="cart-outline" size={18} color={Colors.primary} />
               </TouchableOpacity>
@@ -111,6 +170,18 @@ export default function StoreScreen() {
       </Card>
     );
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+        <View style={styles.wrapper}>
+          <Text style={{ color: theme.text, textAlign: 'center', marginTop: 50 }}>
+            Cargando productos...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
@@ -162,7 +233,7 @@ export default function StoreScreen() {
           })}
         </ScrollView>
 
-        {/* Cart Summary (collapsible) */}
+        {/* Cart Summary */}
         {showCart && cart.items.length > 0 && (
           <Card style={styles.cartSummary}>
             <Text style={[styles.cartTitle, { color: theme.text }]}>
@@ -191,12 +262,17 @@ export default function StoreScreen() {
 
         <FlatList
           data={filtered}
-          keyExtractor={item => item.id}
+          keyExtractor={(item) => item.id}
           renderItem={renderProduct}
           numColumns={Layout.isLargeDevice ? 3 : 2}
           columnWrapperStyle={styles.productsRow}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 50 }}>
+              No hay productos disponibles
+            </Text>
+          }
         />
       </View>
     </SafeAreaView>

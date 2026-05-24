@@ -66,6 +66,15 @@ export default function DashboardScreen() {
               <Text style={[styles.userName, { color: theme.text }]}>{user?.name || 'Doctor'}</Text>
             </View>
             <View style={styles.headerRight}>
+              {/* Admin Panel - Solo visible para administradores */}
+              {user?.role === 'admin' && (
+                <TouchableOpacity
+                  style={[styles.iconBtn, { backgroundColor: theme.surfaceSecondary }]}
+                  onPress={() => router.push('/(admin)')}
+                >
+                  <Ionicons name="shield-outline" size={20} color={Colors.primary} />
+                </TouchableOpacity>
+              )}
               {/* Theme Toggle */}
               <TouchableOpacity
                 style={[styles.iconBtn, { backgroundColor: isDark ? Colors.primarySoft : theme.surfaceSecondary }]}
@@ -163,18 +172,18 @@ export default function DashboardScreen() {
                     <View style={styles.treatmentInfo}>
                       <View style={styles.treatmentTopRow}>
                         <Text style={[styles.treatmentTitle, { color: theme.text }]}>
-                          {pet ? `${speciesEmoji[pet.species]} ${pet.name}` : ''} — {treatment.title}
+                          {pet ? `${speciesEmoji[pet.species as keyof typeof speciesEmoji]} ${pet.name}` : ''} — {treatment.title}
                         </Text>
                       </View>
                       <Text style={[styles.treatmentMeta, { color: theme.textSecondary }]}>
-                        {formatDate(treatment.date)} • {treatment.time} • {treatmentTypeLabel[treatment.type]}
+                        {formatDate(treatment.date)} • {treatment.time} • {treatmentTypeLabel[treatment.type as keyof typeof treatmentTypeLabel]}
                       </Text>
                       <Text style={[styles.treatmentCost, { color: Colors.primary }]}>
                         {formatCurrency(treatment.cost)}
                       </Text>
                     </View>
                     <Badge
-                      text={treatmentStatusLabel[treatment.status]}
+                      text={treatmentStatusLabel[treatment.status as keyof typeof treatmentStatusLabel]}
                       variant={statusBadgeVariant(treatment.status) as any}
                       size="sm"
                     />

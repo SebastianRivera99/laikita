@@ -1,6 +1,6 @@
 // ============================================
 // LAIKITA - Forgot Password Screen
-// Sobrescribe contraseña por correo
+// Restablecer contraseña con Supabase
 // ============================================
 
 import React, { useState } from 'react';
@@ -19,7 +19,7 @@ import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import Button from '@/components/ui/Button';
-import { authAPI } from '@/utils/api';
+import { authService } from '@/services/auth.service';
 
 export default function ForgotPasswordScreen() {
   const theme = useThemeColors();
@@ -57,12 +57,15 @@ export default function ForgotPasswordScreen() {
     try {
       setIsLoading(true);
 
-      const response = await authAPI.changePassword(email, newPassword);
+      // Primero necesitamos que el usuario exista y esté autenticado
+      // Para cambiar contraseña, el usuario debe estar logueado
+      // Por simplicidad, usamos resetPassword que envía email
+      const response = await authService.resetPassword(email);
 
-      showMessage(response.message || 'Contraseña actualizada correctamente');
+      showMessage(response.message || 'Revisa tu correo para restablecer tu contraseña');
       router.replace('/(auth)/login');
     } catch (error: any) {
-      showMessage(error.message || 'No se pudo actualizar la contraseña');
+      showMessage(error.message || 'No se pudo enviar el correo de restablecimiento');
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +87,7 @@ export default function ForgotPasswordScreen() {
             </View>
             <Text style={[styles.title, { color: theme.text }]}>Restablecer contraseña</Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Ingresa el correo y define una nueva contraseña
+              Ingresa tu correo para recibir un enlace de restablecimiento
             </Text>
           </View>
 
@@ -112,46 +115,8 @@ export default function ForgotPasswordScreen() {
               ]}
             />
 
-            <Text style={[styles.label, { color: theme.text, marginTop: 14 }]}>
-              Nueva contraseña
-            </Text>
-            <TextInput
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Nueva contraseña"
-              secureTextEntry
-              placeholderTextColor={theme.textSecondary}
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  borderColor: theme.borderLight,
-                  backgroundColor: theme.background,
-                },
-              ]}
-            />
-
-            <Text style={[styles.label, { color: theme.text, marginTop: 14 }]}>
-              Confirmar contraseña
-            </Text>
-            <TextInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirmar contraseña"
-              secureTextEntry
-              placeholderTextColor={theme.textSecondary}
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  borderColor: theme.borderLight,
-                  backgroundColor: theme.background,
-                },
-              ]}
-            />
-
             <Button
-              title="Actualizar contraseña"
+              title="Enviar enlace de restablecimiento"
               onPress={handleResetPassword}
               loading={isLoading}
               fullWidth
@@ -227,5 +192,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
+    marginBottom: 18,
   },
 });

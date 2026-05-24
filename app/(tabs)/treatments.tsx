@@ -1,7 +1,3 @@
-// ============================================
-// LAIKITA - Treatments List Screen
-// ============================================
-
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -13,7 +9,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
@@ -43,9 +39,18 @@ const statusFilters: { key: TreatmentStatus | 'all'; label: string }[] = [
 export default function TreatmentsScreen() {
   const theme = useThemeColors();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { treatments, getPet } = useData();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<TreatmentStatus | 'all'>('all');
+
+  const goBack = () => {
+    if (from === 'admin') {
+      router.push('/(admin)');
+    } else {
+      router.back();
+    }
+  };
 
   const filtered = useMemo(() => {
     let result = treatments;
@@ -55,7 +60,7 @@ export default function TreatmentsScreen() {
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(t => {
-        const pet = getPet(t.petId);
+        const pet = getPet(Number(t.petId));
         return (
           t.title.toLowerCase().includes(q) ||
           (pet && pet.name.toLowerCase().includes(q)) ||
@@ -76,11 +81,11 @@ export default function TreatmentsScreen() {
   };
 
   const renderTreatment = ({ item }: { item: Treatment }) => {
-    const pet = getPet(item.petId);
-    const typeColor = Colors.treatmentColors[item.type] || Colors.primary;
+    const pet = getPet(Number(item.petId));
+    const typeColor = Colors.treatmentColors[item.type as keyof typeof Colors.treatmentColors] || Colors.primary;
 
     return (
-      <Card onPress={() => router.push(`/treatment/${item.id}` as any)} style={styles.card}>
+      <Card onPress={() => router.push(`/treatment/${item.id}`)} style={styles.card}>
         <View style={styles.row}>
           <View style={[styles.typeIndicator, { backgroundColor: typeColor }]} />
           <View style={styles.info}>
@@ -89,14 +94,14 @@ export default function TreatmentsScreen() {
                 {item.title}
               </Text>
               <Badge
-                text={treatmentStatusLabel[item.status]}
+                text={treatmentStatusLabel[item.status as keyof typeof treatmentStatusLabel]}
                 variant={statusBadgeVariant(item.status)}
                 size="sm"
               />
             </View>
             {pet && (
               <Text style={[styles.petName, { color: theme.textSecondary }]}>
-                {speciesEmoji[pet.species]} {pet.name} — {treatmentTypeLabel[item.type]}
+                {speciesEmoji[pet.species as keyof typeof speciesEmoji]} {pet.name} — {treatmentTypeLabel[item.type as keyof typeof treatmentTypeLabel]}
               </Text>
             )}
             <View style={styles.bottomRow}>
@@ -117,10 +122,13 @@ export default function TreatmentsScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <View style={styles.wrapper}>
         <View style={styles.header}>
+          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
           <Text style={[styles.title, { color: theme.text }]}>Tratamientos</Text>
           <TouchableOpacity
             style={[styles.addBtn, { backgroundColor: Colors.accent }]}
-            onPress={() => router.push('/treatment/create' as any)}
+            onPress={() => router.push('/treatment/create')}
           >
             <Ionicons name="add" size={24} color="#FFF" />
           </TouchableOpacity>
@@ -128,7 +136,6 @@ export default function TreatmentsScreen() {
 
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar tratamiento, mascota..." />
 
-        {/* Status filter chips */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -147,7 +154,7 @@ export default function TreatmentsScreen() {
                     borderColor: active ? Colors.primary : theme.border,
                   },
                 ]}
-                onPress={() => setStatusFilter(f.key)}
+                onPress={() => setStatusFilter(f.key as TreatmentStatus | 'all')}
               >
                 <Text
                   style={[
@@ -174,7 +181,7 @@ export default function TreatmentsScreen() {
               title="Sin tratamientos"
               description="Crea un nuevo tratamiento o cita para una mascota"
               actionLabel="+ Nueva cita"
-              onAction={() => router.push('/treatment/create' as any)}
+              onAction={() => router.push('/treatment/create')}
             />
           }
         />
@@ -200,7 +207,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: Platform.OS === 'android' ? 16 : 0,
   },
-  title: { fontSize: Layout.fontSize.title, fontWeight: '800' },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: Layout.fontSize.title, fontWeight: '800', flex: 1, textAlign: 'center' },
   addBtn: {
     width: 42,
     height: 42,

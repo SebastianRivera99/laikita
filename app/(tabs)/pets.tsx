@@ -1,7 +1,3 @@
-// ============================================
-// LAIKITA - Pets List Screen
-// ============================================
-
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -12,7 +8,7 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
@@ -28,8 +24,17 @@ import type { Pet } from '@/types';
 export default function PetsScreen() {
   const theme = useThemeColors();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { pets, getOwner } = useData();
   const [search, setSearch] = useState('');
+
+  const goBack = () => {
+    if (from === 'admin') {
+      router.push('/(admin)');
+    } else {
+      router.back();
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!search) return pets;
@@ -43,17 +48,17 @@ export default function PetsScreen() {
   }, [pets, search]);
 
   const renderPet = ({ item }: { item: Pet }) => {
-    const owner = getOwner(item.ownerId);
+    const owner = getOwner(Number(item.ownerId));
     return (
-      <Card onPress={() => router.push(`/pet/${item.id}` as any)} style={styles.card}>
+      <Card onPress={() => router.push(`/pet/${item.id}`)} style={styles.card}>
         <View style={styles.row}>
           <View
             style={[
               styles.avatar,
-              { backgroundColor: `${Colors.speciesColors[item.species]}20` },
+              { backgroundColor: `${Colors.speciesColors[item.species as keyof typeof Colors.speciesColors]}20` },
             ]}
           >
-            <Text style={styles.emoji}>{speciesEmoji[item.species]}</Text>
+            <Text style={styles.emoji}>{speciesEmoji[item.species as keyof typeof speciesEmoji]}</Text>
           </View>
           <View style={styles.info}>
             <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
@@ -67,7 +72,7 @@ export default function PetsScreen() {
             )}
           </View>
           <View style={styles.rightCol}>
-            <Badge text={speciesLabel[item.species]} variant="primary" size="sm" />
+            <Badge text={speciesLabel[item.species as keyof typeof speciesLabel]} variant="primary" size="sm" />
             <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} style={{ marginTop: 8 }} />
           </View>
         </View>
@@ -79,10 +84,13 @@ export default function PetsScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <View style={styles.wrapper}>
         <View style={styles.header}>
+          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
           <Text style={[styles.title, { color: theme.text }]}>Mascotas</Text>
           <TouchableOpacity
             style={[styles.addBtn, { backgroundColor: Colors.secondary }]}
-            onPress={() => router.push('/pet/create' as any)}
+            onPress={() => router.push('/pet/create')}
           >
             <Ionicons name="add" size={24} color="#FFF" />
           </TouchableOpacity>
@@ -102,7 +110,7 @@ export default function PetsScreen() {
               title="Sin mascotas registradas"
               description="Registra la primera mascota asociada a un dueño"
               actionLabel="+ Agregar mascota"
-              onAction={() => router.push('/pet/create' as any)}
+              onAction={() => router.push('/pet/create')}
             />
           }
         />
@@ -128,7 +136,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: Platform.OS === 'android' ? 16 : 0,
   },
-  title: { fontSize: Layout.fontSize.title, fontWeight: '800' },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: Layout.fontSize.title, fontWeight: '800', flex: 1, textAlign: 'center' },
   addBtn: {
     width: 42,
     height: 42,
