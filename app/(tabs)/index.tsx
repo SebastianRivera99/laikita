@@ -1,5 +1,5 @@
 // ============================================
-// LAIKITA - Dashboard (Home) + Theme Toggle
+// LAIKITA - Dashboard (Home) + Theme Toggle (Híbrido Optimizado)
 // ============================================
 
 import React from 'react';
@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Platform,
+  useWindowDimensions, // Agregado para detectar el tamaño de pantalla
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +37,9 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { owners, pets, treatments } = useData();
+  const { width } = useWindowDimensions(); // Lector de ancho en tiempo real
+
+  const isDesktop = width > 768; // Flag de diseño adaptativo
 
   const todayTreatments = treatments.filter(t => t.status === 'scheduled');
   const completedTreatments = treatments.filter(t => t.status === 'completed');
@@ -58,7 +62,9 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.wrapper}>
+        {/* wrapper dinámico: Mayor margen y ancho máximo unificado en PC */}
+        <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
+          
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
@@ -66,7 +72,7 @@ export default function DashboardScreen() {
               <Text style={[styles.userName, { color: theme.text }]}>{user?.name || 'Doctor'}</Text>
             </View>
             <View style={styles.headerRight}>
-              {/* Admin Panel - Solo visible para administradores */}
+              {/* Admin Panel */}
               {user?.role === 'admin' && (
                 <TouchableOpacity
                   style={[styles.iconBtn, { backgroundColor: theme.surfaceSecondary }]}
@@ -96,54 +102,66 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          {/* Stats */}
-          <View style={styles.statsRow}>
-            <Card style={[styles.statCard, { borderLeftColor: Colors.primary, borderLeftWidth: 3 }]}>
-              <Ionicons name="people-outline" size={24} color={Colors.primary} />
-              <Text style={[styles.statNumber, { color: theme.text }]}>{owners.length}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Dueños</Text>
-            </Card>
-            <Card style={[styles.statCard, { borderLeftColor: Colors.secondary, borderLeftWidth: 3 }]}>
-              <Ionicons name="paw-outline" size={24} color={Colors.secondary} />
-              <Text style={[styles.statNumber, { color: theme.text }]}>{pets.length}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Mascotas</Text>
-            </Card>
-          </View>
+          {/* Stats Container Dinámico */}
+          {/* Si es escritorio, envuelve las 4 tarjetas en un solo contenedor horizontal */}
+          <View style={isDesktop ? styles.statsRowDesktop : { gap: 12, marginBottom: 12 }}>
+            
+            {/* Fila 1 en móvil / Bloque 1 y 2 en PC */}
+            <View style={styles.statsRow}>
+              <Card style={[styles.statCard, { borderLeftColor: Colors.primary, borderLeftWidth: 3 }]}>
+                <Ionicons name="people-outline" size={24} color={Colors.primary} />
+                <Text style={[styles.statNumber, { color: theme.text }]}>{owners.length}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Dueños</Text>
+              </Card>
+              <Card style={[styles.statCard, { borderLeftColor: Colors.secondary, borderLeftWidth: 3 }]}>
+                <Ionicons name="paw-outline" size={24} color={Colors.secondary} />
+                <Text style={[styles.statNumber, { color: theme.text }]}>{pets.length}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Mascotas</Text>
+              </Card>
+            </View>
 
-          <View style={styles.statsRow}>
-            <Card style={[styles.statCard, { borderLeftColor: Colors.accent, borderLeftWidth: 3 }]}>
-              <Ionicons name="calendar-outline" size={24} color={Colors.accent} />
-              <Text style={[styles.statNumber, { color: theme.text }]}>{todayTreatments.length}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pendientes</Text>
-            </Card>
-            <Card style={[styles.statCard, { borderLeftColor: Colors.success, borderLeftWidth: 3 }]}>
-              <Ionicons name="cash-outline" size={24} color={Colors.success} />
-              <Text style={[styles.statNumber, { color: theme.text }]}>{formatCurrency(revenue)}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Ingresos</Text>
-            </Card>
+            {/* Fila 2 en móvil / Bloque 3 y 4 en PC */}
+            <View style={[styles.statsRow, isDesktop && { marginBottom: 0 }]}>
+              <Card style={[styles.statCard, { borderLeftColor: Colors.accent, borderLeftWidth: 3 }]}>
+                <Ionicons name="calendar-outline" size={24} color={Colors.accent} />
+                <Text style={[styles.statNumber, { color: theme.text }]}>{todayTreatments.length}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pendientes</Text>
+              </Card>
+              <Card style={[styles.statCard, { borderLeftColor: Colors.success, borderLeftWidth: 3 }]}>
+                <Ionicons name="cash-outline" size={24} color={Colors.success} />
+                <Text style={[styles.statNumber, { color: theme.text }]}>{formatCurrency(revenue)}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Ingresos</Text>
+              </Card>
+            </View>
+
           </View>
 
           {/* Quick Actions */}
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Acciones rápidas</Text>
-          <View style={styles.actionsRow}>
-            {[
-              { icon: 'person-add-outline' as const, label: 'Dueño', color: Colors.primary, route: '/owner/create' },
-              { icon: 'paw-outline' as const, label: 'Mascota', color: Colors.secondary, route: '/pet/create' },
-              { icon: 'medkit-outline' as const, label: 'Cita', color: Colors.accent, route: '/treatment/create' },
-            ].map((action) => (
-              <TouchableOpacity
-                key={action.label}
-                style={[styles.actionBtn, { backgroundColor: theme.surface, borderColor: theme.borderLight }]}
-                onPress={() => router.push(action.route as any)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.actionIcon, { backgroundColor: `${action.color}15` }]}>
-                  <Ionicons name={action.icon} size={22} color={action.color} />
-                </View>
-                <Text style={[styles.actionLabel, { color: theme.text }]}>+ {action.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+<Text style={[styles.sectionTitle, { color: theme.text }]}>Acciones rápidas</Text>
+<View style={[styles.actionsRow, isDesktop && { justifyContent: 'center', width: '100%' }]}>
+  {[
+    { icon: 'person-add-outline' as const, label: 'Dueño', color: Colors.primary, route: '/owner/create' },
+    { icon: 'paw-outline' as const, label: 'Mascota', color: Colors.secondary, route: '/pet/create' },
+    { icon: 'medkit-outline' as const, label: 'Cita', color: Colors.accent, route: '/treatment/create' },
+  ].map((itemBoton) => (
+    <TouchableOpacity
+      key={itemBoton.label}
+      style={[
+        styles.actionBtn,
+        { backgroundColor: theme.surface, borderColor: theme.borderLight },
+        // Si es PC, anulamos el flex completo y le damos un ancho fijo elegante
+        isDesktop ? {flex: 0, width: 180, minWidth: 180 } : {flex: 1}
+      ]}
+      onPress={() => router.push(itemBoton.route as any)}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.actionIcon, { backgroundColor: `${itemBoton.color}15` }]}>
+        <Ionicons name={itemBoton.icon} size={22} color={itemBoton.color} />
+      </View>
+      <Text style={[styles.actionLabel, { color: theme.text }]}>+ {itemBoton.label}</Text>
+    </TouchableOpacity>
+  ))}
+</View>
 
           {/* Recent Treatments */}
           <View style={styles.sectionHeader}>
@@ -208,6 +226,11 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  // Estilo exclusivo para darle más espacio al dashboard en PC
+  wrapperDesktop: {
+    padding: 32,
+    maxWidth: 1050, // Ocupa armónicamente el espacio al lado del Sidebar
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -232,7 +255,14 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: 12,
+    flex: 1, // Permite que se estiren de manera equitativa
+  },
+  // Contenedor que une las dos filas en una sola línea horizontal en PC
+  statsRowDesktop: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 12,
+    width: '100%',
   },
   statCard: {
     flex: 1,
@@ -259,7 +289,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   actionBtn: {
-    flex: 1,
+    flex: 1, // Su comportamiento base en móvil
     alignItems: 'center',
     paddingVertical: 16,
     borderRadius: Layout.radius.lg,
