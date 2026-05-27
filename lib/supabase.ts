@@ -5,9 +5,9 @@
 import { createClient } from '@supabase/supabase-js';
 import 'react-native-url-polyfill/auto';
 
-// Credenciales de Supabase
-const supabaseUrl = 'https://dtqyxyimttrzjgxjwgqo.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0cXl4eWltdHRyempneGp3Z3FvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2MDU3MjksImV4cCI6MjA5NTE4MTcyOX0.9JBmbq6E-wL64CHy2bH7WwCPlvnNfnVOt7lk-WboNCQ';
+// Credenciales de Supabase (definidas en .env.local — nunca hardcodear aquí)
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Almacenamiento en memoria (fallback para web)
 const memoryStorage: Record<string, string> = {};
