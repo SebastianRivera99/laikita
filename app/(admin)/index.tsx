@@ -54,9 +54,9 @@ export default function AdminDashboard() {
 const menuItems = [
   { key: 'users', title: 'Usuarios', icon: 'people-outline' as const, color: Colors.error, route: '/(admin)/users' },
   { key: 'products', title: 'Productos', icon: 'cart-outline' as const, color: Colors.primary, route: '/(admin)/products' },
-  { key: 'owners', title: 'Dueños', icon: 'people-outline' as const, color: Colors.secondary, route: '/(tabs)/owners?from=admin' },
-  { key: 'pets', title: 'Mascotas', icon: 'paw-outline' as const, color: Colors.accent, route: '/(tabs)/pets?from=admin' },
-  { key: 'treatments', title: 'Citas', icon: 'medkit-outline' as const, color: Colors.info, route: '/(tabs)/treatments?from=admin' },
+  { key: 'owners', title: 'Dueños', icon: 'people-outline' as const, color: Colors.secondary, route: '/(admin)/owners' },
+  { key: 'pets', title: 'Mascotas', icon: 'paw-outline' as const, color: Colors.accent, route: '/(admin)/pets' },
+  { key: 'treatments', title: 'Citas', icon: 'medkit-outline' as const, color: Colors.info, route: '/(admin)/treatments' },
 ];
 
   const pendingTreatments = treatments.filter(t => t.status === 'scheduled').length;

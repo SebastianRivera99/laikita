@@ -9,7 +9,6 @@ export default function AdminLayout() {
 
   if (isLoading) return null;
   
-  // Solo admins pueden acceder
   if (!user || user.role !== 'admin') {
     return <Redirect href="/(tabs)" />;
   }
@@ -20,6 +19,13 @@ export default function AdminLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: theme.background },
       }}
-    />
+    >
+      <Stack.Screen name="index" />
+      <Stack.Screen name="users" />
+      <Stack.Screen name="products" />
+      <Stack.Screen name="owners" />
+      <Stack.Screen name="pets" />
+      <Stack.Screen name="treatments" />
+    </Stack>
   );
 }
