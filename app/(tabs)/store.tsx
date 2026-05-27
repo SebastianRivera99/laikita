@@ -47,7 +47,7 @@ export default function StoreScreen() {
   const theme = useThemeColors();
   const router = useRouter();
   const { addToCart, isInCart, cart, removeFromCart, clearCart, getItemCount } = useCart();
-  const { canManageProducts } = usePermissions(); // Solo admin e inventory pueden gestionar productos
+  const { canManageProducts, isAdmin, isInventory } = usePermissions();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<ProductCategory | 'all'>('all');
   const [showCart, setShowCart] = useState(false);
@@ -111,8 +111,6 @@ export default function StoreScreen() {
     return result;
   }, [products, search, category]);
 
-  // Si el total de productos es impar, agrega un item vacío al final
-  // para evitar que el último card se estire y ocupe toda la fila
   const displayData = useMemo(() => {
     if (filtered.length % numColumns !== 0) {
       return [...filtered, { id: '__placeholder__', isPlaceholder: true } as any];
@@ -127,6 +125,17 @@ export default function StoreScreen() {
       [{ text: 'OK', onPress: clearCart }]
     );
   };
+
+  const handleManagePress = () => {
+  // Inventory va a su panel de gestión de productos
+  if (isInventory) {
+    router.push('/(inventory)/products' as any);
+  } 
+  // Admin va al panel admin de productos
+  else if (isAdmin) {
+    router.push('/(admin)/products' as any);
+  }
+};
 
   const renderCategoryChip = (c: typeof categories[0]) => {
     const active = category === c.key;
@@ -151,8 +160,6 @@ export default function StoreScreen() {
   };
 
   const renderProduct = ({ item }: { item: Product & { isPlaceholder?: boolean } }) => {
-    // Item fantasma: ocupa el espacio pero no se ve
-    // Mantiene la cuadrícula alineada cuando hay número impar de productos
     if (item.isPlaceholder) {
       return <View style={styles.productCardPlaceholder} />;
     }
@@ -225,7 +232,7 @@ export default function StoreScreen() {
             {canManageProducts && (
               <TouchableOpacity
                 style={[styles.manageBtn, { backgroundColor: theme.surfaceSecondary }]}
-                onPress={() => router.push('/(admin)/products')}
+                onPress={handleManagePress}
               >
                 <Ionicons name="settings-outline" size={22} color={theme.text} />
               </TouchableOpacity>
@@ -246,7 +253,6 @@ export default function StoreScreen() {
 
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar productos..." />
 
-        {/* Desktop: wrap en múltiples filas | Mobile: scroll horizontal */}
         {isDesktop ? (
           <View style={styles.categoriesWrap}>
             {categories.map(renderCategoryChip)}
@@ -262,7 +268,6 @@ export default function StoreScreen() {
           </ScrollView>
         )}
 
-        {/* Cart Summary */}
         {showCart && cart.items.length > 0 && (
           <Card style={styles.cartSummary}>
             <Text style={[styles.cartTitle, { color: theme.text }]}>
