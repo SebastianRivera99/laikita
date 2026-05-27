@@ -51,13 +51,13 @@ export default function AdminDashboard() {
     }
   };
 
-const menuItems = [
-  { key: 'users', title: 'Usuarios', icon: 'people-outline' as const, color: Colors.error, route: '/(admin)/users' },
-  { key: 'products', title: 'Productos', icon: 'cart-outline' as const, color: Colors.primary, route: '/(admin)/products' },
-  { key: 'owners', title: 'Dueños', icon: 'people-outline' as const, color: Colors.secondary, route: '/(admin)/owners' },
-  { key: 'pets', title: 'Mascotas', icon: 'paw-outline' as const, color: Colors.accent, route: '/(admin)/pets' },
-  { key: 'treatments', title: 'Citas', icon: 'medkit-outline' as const, color: Colors.info, route: '/(admin)/treatments' },
-];
+  const menuItems = [
+    { key: 'users', title: 'Usuarios', icon: 'people-outline', color: Colors.error, route: '/(admin)/users' },
+    { key: 'products', title: 'Productos', icon: 'cart-outline', color: Colors.primary, route: '/(admin)/products' },
+    { key: 'owners', title: 'Dueños', icon: 'people-outline', color: Colors.secondary, route: '/(admin)/owners' },
+    { key: 'pets', title: 'Mascotas', icon: 'paw-outline', color: Colors.accent, route: '/(admin)/pets' },
+    { key: 'treatments', title: 'Citas', icon: 'medkit-outline', color: Colors.info, route: '/(admin)/treatments' },
+  ];
 
   const pendingTreatments = treatments.filter(t => t.status === 'scheduled').length;
 
@@ -69,6 +69,7 @@ const menuItems = [
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.wrapper}>
+          {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <TouchableOpacity
@@ -98,6 +99,7 @@ const menuItems = [
             </View>
           </View>
 
+          {/* Stats */}
           <View style={styles.statsRow}>
             <Card style={[styles.statCard, { borderLeftColor: Colors.error, borderLeftWidth: 3 }]}>
               <Ionicons name="people-outline" size={24} color={Colors.error} />
@@ -137,6 +139,7 @@ const menuItems = [
             </Card>
           </View>
 
+          {/* Gestión */}
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Gestión</Text>
           <View style={styles.actionsRow}>
             {menuItems.map((item) => (
@@ -147,13 +150,14 @@ const menuItems = [
                 activeOpacity={0.7}
               >
                 <View style={[styles.actionIcon, { backgroundColor: `${item.color}15` }]}>
-                  <Ionicons name={item.icon} size={22} color={item.color} />
+                  <Ionicons name={item.icon as any} size={22} color={item.color} />
                 </View>
                 <Text style={[styles.actionLabel, { color: theme.text }]}>{item.title}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
+          {/* Volver al panel de cliente */}
           <TouchableOpacity
             style={[styles.backToClientBtn, { backgroundColor: Colors.primarySoft, borderColor: Colors.primary }]}
             onPress={() => router.push('/(tabs)')}

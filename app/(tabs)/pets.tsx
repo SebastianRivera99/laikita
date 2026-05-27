@@ -1,3 +1,7 @@
+// ============================================
+// LAIKITA - Pets List Screen
+// ============================================
+
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -7,39 +11,54 @@ import {
   SafeAreaView,
   Platform,
   TouchableOpacity,
-  useWindowDimensions,
+  Alert,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useData } from '@/context/DataContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useNavigationBack } from '@/hooks/useNavigationBack';
 import Card from '@/components/ui/Card';
 import SearchBar from '@/components/ui/SearchBar';
 import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
 import { speciesEmoji, speciesLabel } from '@/utils/formatters';
+import { supabase } from '@/lib/supabase';
 import type { Pet } from '@/types';
 
 export default function PetsScreen() {
   const theme = useThemeColors();
   const router = useRouter();
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { goBack } = useNavigationBack();
   const { pets, getOwner } = useData();
+  const { canViewPets, canCreatePets, canEditPets, canDeletePets } = usePermissions();
   const [search, setSearch] = useState('');
-  const { width } = useWindowDimensions();
+  const [loading, setLoading] = useState(false);
 
-  // Flag: true cuando la pantalla supera 768px (tablet/desktop)
-  const isDesktop = width > 768;
-
-  const goBack = () => {
-    if (from === 'admin') {
-      router.push('/(admin)');
-    } else {
-      router.back();
-    }
-  };
+  if (!canViewPets) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+        <View style={styles.wrapper}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: theme.text }]}>Mascotas</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <View style={styles.noAccessContainer}>
+            <Ionicons name="lock-closed-outline" size={64} color={theme.textTertiary} />
+            <Text style={[styles.noAccessText, { color: theme.textSecondary }]}>
+              No tienes acceso a este módulo
+            </Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const filtered = useMemo(() => {
     if (!search) return pets;
@@ -52,54 +71,105 @@ export default function PetsScreen() {
     );
   }, [pets, search]);
 
+  const handleDelete = async (id: number, name: string) => {
+    Alert.alert(
+      'Eliminar mascota',
+      `¿Eliminar a ${name}? Se eliminarán también sus citas.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase.from('pets').delete().eq('id', id);
+              if (error) throw error;
+              alert(`"${name}" eliminado correctamente`);
+            } catch (error: any) {
+              alert('Error: ' + error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderPet = ({ item }: { item: Pet }) => {
     const owner = getOwner(Number(item.ownerId));
+    
     return (
-      <Card onPress={() => router.push(`/pet/${item.id}`)} style={styles.card}>
-        <View style={styles.row}>
-          <View
-            style={[
-              styles.avatar,
-              { backgroundColor: `${Colors.speciesColors[item.species as keyof typeof Colors.speciesColors]}20` },
-            ]}
-          >
-            <Text style={styles.emoji}>{speciesEmoji[item.species as keyof typeof speciesEmoji]}</Text>
-          </View>
-          <View style={styles.info}>
-            <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
-            <Text style={[styles.meta, { color: theme.textSecondary }]}>
-              {item.breed} • {item.weight}kg
-            </Text>
-            {owner && (
-              <Text style={[styles.owner, { color: theme.textTertiary }]}>
-                Dueño: {owner.firstName} {owner.lastName}
+      <Card style={styles.card}>
+        <TouchableOpacity 
+          activeOpacity={0.7}
+          onPress={() => router.push(`/pet/${item.id}`)}
+        >
+          <View style={styles.row}>
+            <View
+              style={[
+                styles.avatar,
+                { backgroundColor: `${Colors.speciesColors[item.species as keyof typeof Colors.speciesColors]}20` },
+              ]}
+            >
+              <Text style={styles.emoji}>{speciesEmoji[item.species as keyof typeof speciesEmoji]}</Text>
+            </View>
+            <View style={styles.info}>
+              <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
+              <Text style={[styles.meta, { color: theme.textSecondary }]}>
+                {item.breed} • {item.weight}kg
               </Text>
-            )}
+              {owner && (
+                <Text style={[styles.owner, { color: theme.textTertiary }]}>
+                  Dueño: {owner.firstName} {owner.lastName}
+                </Text>
+              )}
+            </View>
+            <View style={styles.rightCol}>
+              <Badge text={speciesLabel[item.species as keyof typeof speciesLabel]} variant="primary" size="sm" />
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} style={{ marginTop: 8 }} />
+            </View>
           </View>
-          <View style={styles.rightCol}>
-            <Badge text={speciesLabel[item.species as keyof typeof speciesLabel]} variant="primary" size="sm" />
-            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} style={styles.chevron} />
+        </TouchableOpacity>
+        
+        {/* Botones de acción - solo admin puede editar/eliminar */}
+        {canEditPets && (
+          <View style={[styles.actionButtons, { borderTopColor: theme.borderLight }]}>
+            <TouchableOpacity 
+              style={[styles.actionBtn, { backgroundColor: Colors.primarySoft }]}
+              onPress={() => router.push(`/pet/edit/${item.id}`)}
+            >
+              <Ionicons name="create-outline" size={18} color={Colors.primary} />
+              <Text style={{ fontSize: 12, color: Colors.primary }}>Editar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionBtn, { backgroundColor: Colors.errorSoft }]}
+              onPress={() => handleDelete(Number(item.id), item.name)}
+            >
+              <Ionicons name="trash-outline" size={18} color={Colors.error} />
+              <Text style={{ fontSize: 12, color: Colors.error }}>Eliminar</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
       </Card>
     );
   };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      {/* wrapper cambia de maxWidth 480 a 1050 segun el tamaño de pantalla */}
-      <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
+      <View style={styles.wrapper}>
         <View style={styles.header}>
           <TouchableOpacity onPress={goBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={theme.text} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: theme.text }]}>Mascotas</Text>
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: Colors.secondary }]}
-            onPress={() => router.push('/pet/create')}
-          >
-            <Ionicons name="add" size={24} color="#FFF" />
-          </TouchableOpacity>
+          {canCreatePets && (
+            <TouchableOpacity
+              style={[styles.addBtn, { backgroundColor: Colors.secondary }]}
+              onPress={() => router.push('/pet/create')}
+            >
+              <Ionicons name="add" size={24} color="#FFF" />
+            </TouchableOpacity>
+          )}
+          {!canCreatePets && <View style={{ width: 40 }} />}
         </View>
 
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar por nombre, raza..." />
@@ -108,14 +178,10 @@ export default function PetsScreen() {
           data={filtered}
           keyExtractor={item => item.id}
           renderItem={renderPet}
-          // En desktop: 2 columnas. En móvil: 1 columna
-          numColumns={isDesktop ? 2 : 1}
-          // key fuerza re-render cuando cambia numColumns (evita bug de React Native)
-          key={isDesktop ? 'desktop' : 'mobile'}
-          // columnWrapperStyle solo aplica cuando hay más de 1 columna
-          columnWrapperStyle={isDesktop ? styles.columnWrapper : undefined}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
+          refreshing={loading}
+          onRefresh={() => {}}
           ListEmptyComponent={
             <EmptyState
               icon="paw-outline"
@@ -133,7 +199,6 @@ export default function PetsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  // Estilo base: móvil, ancho máximo 480px centrado
   wrapper: {
     flex: 1,
     padding: Layout.spacing.lg,
@@ -141,11 +206,6 @@ const styles = StyleSheet.create({
     maxWidth: Layout.maxContentWidth,
     width: '100%',
     alignSelf: 'center',
-  },
-  // Estilo desktop: más padding y más ancho para aprovechar la pantalla
-  wrapperDesktop: {
-    padding: 32,
-    maxWidth: 1050,
   },
   header: {
     flexDirection: 'row',
@@ -163,11 +223,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Espacio entre las 2 columnas en desktop
-  columnWrapper: { gap: 12, marginBottom: 12 },
   list: { paddingBottom: 120, gap: 10 },
-  // flex: 1 hace que cada card ocupe el mismo ancho en su columna
-  card: { marginBottom: 0, flex: 1 },
+  card: { marginBottom: 0, padding: Layout.spacing.md },
   row: { flexDirection: 'row', alignItems: 'center' },
   avatar: {
     width: 50,
@@ -183,5 +240,22 @@ const styles = StyleSheet.create({
   meta: { fontSize: Layout.fontSize.sm, marginTop: 2 },
   owner: { fontSize: Layout.fontSize.xs, marginTop: 2 },
   rightCol: { alignItems: 'flex-end' },
-  chevron: { marginTop: 8 },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  noAccessContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
+  noAccessText: { fontSize: Layout.fontSize.lg, textAlign: 'center' },
 });

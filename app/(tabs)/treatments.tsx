@@ -1,3 +1,7 @@
+// ============================================
+// LAIKITA - Treatments List Screen
+// ============================================
+
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -8,18 +12,21 @@ import {
   Platform,
   TouchableOpacity,
   ScrollView,
-  useWindowDimensions,
+  Alert,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useData } from '@/context/DataContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useNavigationBack } from '@/hooks/useNavigationBack';
 import Card from '@/components/ui/Card';
 import SearchBar from '@/components/ui/SearchBar';
 import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
+import { supabase } from '@/lib/supabase';
 import {
   formatDate,
   formatCurrency,
@@ -40,22 +47,33 @@ const statusFilters: { key: TreatmentStatus | 'all'; label: string }[] = [
 export default function TreatmentsScreen() {
   const theme = useThemeColors();
   const router = useRouter();
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { goBack } = useNavigationBack();
   const { treatments, getPet } = useData();
+  const { canViewTreatments, canCreateTreatments, canChangeTreatmentStatus, canEditTreatments, canDeleteTreatments } = usePermissions();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<TreatmentStatus | 'all'>('all');
-  const { width } = useWindowDimensions();
 
-  // Flag: true cuando la pantalla supera 768px (tablet/desktop)
-  const isDesktop = width > 768;
-
-  const goBack = () => {
-    if (from === 'admin') {
-      router.push('/(admin)');
-    } else {
-      router.back();
-    }
-  };
+  if (!canViewTreatments) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+        <View style={styles.wrapper}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: theme.text }]}>Citas</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <View style={styles.noAccessContainer}>
+            <Ionicons name="lock-closed-outline" size={64} color={theme.textTertiary} />
+            <Text style={[styles.noAccessText, { color: theme.textSecondary }]}>
+              No tienes acceso a este módulo
+            </Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const filtered = useMemo(() => {
     let result = treatments;
@@ -85,59 +103,152 @@ export default function TreatmentsScreen() {
     }
   };
 
+  const handleDelete = async (id: number, title: string) => {
+    Alert.alert(
+      'Eliminar cita',
+      `¿Eliminar "${title}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase.from('treatments').delete().eq('id', id);
+              if (error) throw error;
+              alert(`"${title}" eliminado correctamente`);
+            } catch (error: any) {
+              alert('Error: ' + error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleStatusChange = (id: number, newStatus: TreatmentStatus) => {
+    Alert.alert(
+      'Cambiar estado',
+      `¿Cambiar estado a "${newStatus}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cambiar',
+          onPress: async () => {
+            try {
+              const { error } = await supabase.from('treatments').update({ status: newStatus }).eq('id', id);
+              if (error) throw error;
+              alert('Estado actualizado correctamente');
+            } catch (error: any) {
+              alert('Error: ' + error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderTreatment = ({ item }: { item: Treatment }) => {
     const pet = getPet(Number(item.petId));
     const typeColor = Colors.treatmentColors[item.type as keyof typeof Colors.treatmentColors] || Colors.primary;
 
     return (
-      <Card onPress={() => router.push(`/treatment/${item.id}`)} style={styles.card}>
-        <View style={styles.row}>
-          <View style={[styles.typeIndicator, { backgroundColor: typeColor }]} />
-          <View style={styles.info}>
-            <View style={styles.topRow}>
-              <Text style={[styles.treatmentTitle, { color: theme.text }]}>
-                {item.title}
-              </Text>
-              <Badge
-                text={treatmentStatusLabel[item.status as keyof typeof treatmentStatusLabel]}
-                variant={statusBadgeVariant(item.status)}
-                size="sm"
-              />
-            </View>
-            {pet && (
-              <Text style={[styles.petName, { color: theme.textSecondary }]}>
-                {speciesEmoji[pet.species as keyof typeof speciesEmoji]} {pet.name} — {treatmentTypeLabel[item.type as keyof typeof treatmentTypeLabel]}
-              </Text>
-            )}
-            <View style={styles.bottomRow}>
-              <Text style={[styles.dateMeta, { color: theme.textTertiary }]}>
-                {formatDate(item.date)} • {item.time}
-              </Text>
-              <Text style={[styles.cost, { color: Colors.primary }]}>
-                {formatCurrency(item.cost)}
-              </Text>
+      <Card style={styles.card}>
+        <TouchableOpacity 
+          activeOpacity={0.7}
+          onPress={() => router.push(`/treatment/${item.id}`)}
+        >
+          <View style={styles.row}>
+            <View style={[styles.typeIndicator, { backgroundColor: typeColor }]} />
+            <View style={styles.info}>
+              <View style={styles.topRow}>
+                <Text style={[styles.treatmentTitle, { color: theme.text }]}>
+                  {item.title}
+                </Text>
+                <Badge
+                  text={treatmentStatusLabel[item.status as keyof typeof treatmentStatusLabel]}
+                  variant={statusBadgeVariant(item.status)}
+                  size="sm"
+                />
+              </View>
+              {pet && (
+                <Text style={[styles.petName, { color: theme.textSecondary }]}>
+                  {speciesEmoji[pet.species as keyof typeof speciesEmoji]} {pet.name} — {treatmentTypeLabel[item.type as keyof typeof treatmentTypeLabel]}
+                </Text>
+              )}
+              <View style={styles.bottomRow}>
+                <Text style={[styles.dateMeta, { color: theme.textTertiary }]}>
+                  {formatDate(item.date)} • {item.time}
+                </Text>
+                <Text style={[styles.cost, { color: Colors.primary }]}>
+                  {formatCurrency(item.cost)}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
+        
+        {/* Botones de cambio de estado - Admin y Vet */}
+        {canChangeTreatmentStatus && (
+          <View style={[styles.statusButtons, { borderTopColor: theme.borderLight }]}>
+            {item.status !== 'in_progress' && item.status !== 'completed' && (
+              <TouchableOpacity style={[styles.statusBtn, { backgroundColor: Colors.warningSoft }]} onPress={() => handleStatusChange(Number(item.id), 'in_progress')}>
+                <Text style={{ color: Colors.warning }}>En progreso</Text>
+              </TouchableOpacity>
+            )}
+            {item.status !== 'completed' && (
+              <TouchableOpacity style={[styles.statusBtn, { backgroundColor: Colors.successSoft }]} onPress={() => handleStatusChange(Number(item.id), 'completed')}>
+                <Text style={{ color: Colors.success }}>Completar</Text>
+              </TouchableOpacity>
+            )}
+            {item.status !== 'cancelled' && item.status !== 'completed' && (
+              <TouchableOpacity style={[styles.statusBtn, { backgroundColor: Colors.errorSoft }]} onPress={() => handleStatusChange(Number(item.id), 'cancelled')}>
+                <Text style={{ color: Colors.error }}>Cancelar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        
+        {/* Botones editar/eliminar - solo admin */}
+        {canEditTreatments && (
+          <View style={[styles.actionButtons, { borderTopColor: theme.borderLight }]}>
+            <TouchableOpacity 
+              style={[styles.actionBtn, { backgroundColor: Colors.primarySoft }]}
+              onPress={() => router.push(`/treatment/edit/${item.id}`)}
+            >
+              <Ionicons name="create-outline" size={18} color={Colors.primary} />
+              <Text style={{ fontSize: 12, color: Colors.primary }}>Editar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionBtn, { backgroundColor: Colors.errorSoft }]}
+              onPress={() => handleDelete(Number(item.id), item.title)}
+            >
+              <Ionicons name="trash-outline" size={18} color={Colors.error} />
+              <Text style={{ fontSize: 12, color: Colors.error }}>Eliminar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </Card>
     );
   };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      {/* wrapper cambia de maxWidth 480 a 1050 segun el tamaño de pantalla */}
-      <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
+      <View style={styles.wrapper}>
         <View style={styles.header}>
           <TouchableOpacity onPress={goBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={theme.text} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: theme.text }]}>Tratamientos</Text>
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: Colors.accent }]}
-            onPress={() => router.push('/treatment/create')}
-          >
-            <Ionicons name="add" size={24} color="#FFF" />
-          </TouchableOpacity>
+          <Text style={[styles.title, { color: theme.text }]}>Citas</Text>
+          {canCreateTreatments && (
+            <TouchableOpacity
+              style={[styles.addBtn, { backgroundColor: Colors.accent }]}
+              onPress={() => router.push('/treatment/create')}
+            >
+              <Ionicons name="add" size={24} color="#FFF" />
+            </TouchableOpacity>
+          )}
+          {!canCreateTreatments && <View style={{ width: 40 }} />}
         </View>
 
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar tratamiento, mascota..." />
@@ -179,12 +290,6 @@ export default function TreatmentsScreen() {
           data={filtered}
           keyExtractor={item => item.id}
           renderItem={renderTreatment}
-          // En desktop: 2 columnas. En móvil: 1 columna
-          numColumns={isDesktop ? 2 : 1}
-          // key fuerza re-render cuando cambia numColumns (evita bug de React Native)
-          key={isDesktop ? 'desktop' : 'mobile'}
-          // columnWrapperStyle solo aplica cuando hay más de 1 columna
-          columnWrapperStyle={isDesktop ? styles.columnWrapper : undefined}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
@@ -204,7 +309,6 @@ export default function TreatmentsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  // Estilo base: móvil, ancho máximo 480px centrado
   wrapper: {
     flex: 1,
     padding: Layout.spacing.lg,
@@ -212,11 +316,6 @@ const styles = StyleSheet.create({
     maxWidth: Layout.maxContentWidth,
     width: '100%',
     alignSelf: 'center',
-  },
-  // Estilo desktop: más padding y más ancho para aprovechar la pantalla
-  wrapperDesktop: {
-    padding: 32,
-    maxWidth: 1050,
   },
   header: {
     flexDirection: 'row',
@@ -243,11 +342,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   filterLabel: { fontSize: Layout.fontSize.sm, fontWeight: '600' },
-  // Espacio entre las 2 columnas en desktop
-  columnWrapper: { gap: 12, marginBottom: 12 },
   list: { paddingBottom: 120, gap: 10 },
-  // flex: 1 hace que cada card ocupe el mismo ancho en su columna
-  card: { marginBottom: 0, flex: 1 },
+  card: { marginBottom: 0, padding: Layout.spacing.md },
   row: { flexDirection: 'row', alignItems: 'stretch' },
   typeIndicator: {
     width: 4,
@@ -272,4 +368,35 @@ const styles = StyleSheet.create({
   },
   dateMeta: { fontSize: Layout.fontSize.xs },
   cost: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  statusButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  statusBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  noAccessContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
+  noAccessText: { fontSize: Layout.fontSize.lg, textAlign: 'center' },
 });

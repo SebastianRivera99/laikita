@@ -3,6 +3,7 @@
 // ============================================
 
 import { useAuth } from '@/context/AuthContext';
+import { Alert, Platform } from 'react-native';
 
 export function usePermissions() {
   const { user } = useAuth();
@@ -12,37 +13,55 @@ export function usePermissions() {
   const isInventory = user?.role === 'inventory';
   const isReceptionist = user?.role === 'receptionist';
   
-  // Permisos generales
-  const canView = isAdmin || isVet || isReceptionist;
-  const canCreate = isAdmin || isReceptionist;
-  const canEdit = isAdmin || isReceptionist;
-  const canDelete = isAdmin || isReceptionist;
+  // Dueños
+  const canViewOwners = isAdmin || isReceptionist;
+  const canCreateOwners = isAdmin || isReceptionist;
+  const canEditOwners = isAdmin || isReceptionist;
+  const canDeleteOwners = isAdmin || isReceptionist;
   
-  // Permiso especial para cambiar estado de citas (solo admin y vet)
+  // Mascotas
+  const canViewPets = isAdmin || isReceptionist;
+  const canCreatePets = isAdmin || isReceptionist;
+  const canEditPets = isAdmin || isReceptionist;
+  const canDeletePets = isAdmin || isReceptionist;
+  
+  // Citas
+  const canViewTreatments = isAdmin || isVet || isReceptionist;
+  const canCreateTreatments = isAdmin || isReceptionist;
+  const canEditTreatments = isAdmin || isReceptionist;
+  const canDeleteTreatments = isAdmin || isReceptionist;
   const canChangeTreatmentStatus = isAdmin || isVet;
   
-  // Permisos de productos (admin e inventory)
+  // Tienda
+  const canViewStore = isAdmin || isInventory || isReceptionist;
   const canManageProducts = isAdmin || isInventory;
   
-  // Acceso a panel admin (solo admin)
-  const canAccessAdminPanel = isAdmin;
+  // Historia Clínica
+  const canViewMedicalRecord = isAdmin || isVet;
+  const canCreateMedicalRecord = isAdmin || isVet;
   
-  // Gestión de usuarios (solo admin)
+  // Admin
+  const canAccessAdminPanel = isAdmin;
   const canManageUsers = isAdmin;
   
+  const showPermissionDenied = (action: string) => {
+    const message = `No tienes permisos para ${action}.\n\nContacta con el administrador.`;
+    if (Platform.OS === 'web') {
+      alert(message);
+    } else {
+      Alert.alert('Acceso denegado', message);
+    }
+  };
+  
   return {
-    isAdmin,
-    isVet,
-    isInventory,
-    isReceptionist,
-    canView,
-    canCreate,
-    canEdit,
-    canDelete,
-    canChangeTreatmentStatus,
-    canManageProducts,
-    canAccessAdminPanel,
-    canManageUsers,
+    isAdmin, isVet, isInventory, isReceptionist,
+    canViewOwners, canCreateOwners, canEditOwners, canDeleteOwners,
+    canViewPets, canCreatePets, canEditPets, canDeletePets,
+    canViewTreatments, canCreateTreatments, canEditTreatments, canDeleteTreatments, canChangeTreatmentStatus,
+    canViewStore, canManageProducts,
+    canViewMedicalRecord, canCreateMedicalRecord,
+    canAccessAdminPanel, canManageUsers,
     role: user?.role,
+    showPermissionDenied,
   };
 }

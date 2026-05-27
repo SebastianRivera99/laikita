@@ -1,8 +1,3 @@
-// ============================================
-// LAIKITA - Layout Constants
-// Responsive breakpoints & spacing
-// ============================================
-
 import { Dimensions, Platform } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -13,46 +8,56 @@ export const Layout = {
   isMediumDevice: width >= 375 && width < 768,
   isLargeDevice: width >= 768,
   isWeb: Platform.OS === 'web',
+  isMobile: width < 768,
 
-  // Spacing scale (4px base)
+  // Grid columns responsive
+  get gridColumns() {
+    if (width < 640) return 1;
+    if (width < 768) return 2;
+    if (width < 1024) return 3;
+    if (width < 1280) return 4;
+    return 5;
+  },
+
+  // Spacing responsivo
   spacing: {
-    xs: 4,
-    sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
+    xs: width < 768 ? 4 : 6,
+    sm: width < 768 ? 8 : 10,
+    md: width < 768 ? 12 : 16,
+    lg: width < 768 ? 16 : 24,
+    xl: width < 768 ? 20 : 32,
+    xxl: width < 768 ? 24 : 40,
   },
 
   // Border radius
   radius: {
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 24,
+    sm: 6,
+    md: 8,
+    lg: 12,
+    xl: width < 768 ? 16 : 20,
+    xxl: 24,
     full: 9999,
   },
 
-  // Font sizes
+  // Font sizes responsivas
   fontSize: {
-    xs: 11,
-    sm: 13,
-    md: 15,
-    lg: 17,
-    xl: 20,
-    xxl: 24,
-    xxxl: 32,
-    title: 28,
+    xs: width < 768 ? 11 : 12,
+    sm: width < 768 ? 13 : 14,
+    md: width < 768 ? 15 : 16,
+    lg: width < 768 ? 17 : 18,
+    xl: width < 768 ? 20 : 22,
+    xxl: width < 768 ? 24 : 28,
+    xxxl: width < 768 ? 28 : 34,
+    title: width < 768 ? 22 : 26,
   },
 
-  // Max content width for web
-  maxContentWidth: 480,
-  maxWebWidth: 1200,
+  // Max content width
+  maxContentWidth: width < 768 ? width - 32 : 560,
+  maxWebWidth: 1400,
 
   // Tab bar
-  tabBarHeight: Platform.OS === 'ios' ? 85 : 65,
+  tabBarHeight: width < 768 ? (Platform.OS === 'ios' ? 80 : 65) : 70,
 
   // Header
-  headerHeight: 56,
+  headerHeight: width < 768 ? 56 : 64,
 };
