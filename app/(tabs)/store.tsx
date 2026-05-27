@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
@@ -31,13 +32,13 @@ import {
 import type { Product, ProductCategory } from '@/types';
 
 const categories: { key: ProductCategory | 'all'; label: string; emoji: string }[] = [
-  { key: 'all', label: 'Todos', emoji: '🏪' },
-  { key: 'food', label: 'Alimento', emoji: '🍖' },
-  { key: 'medicine', label: 'Medicina', emoji: '💊' },
-  { key: 'hygiene', label: 'Higiene', emoji: '🧴' },
-  { key: 'toys', label: 'Juguetes', emoji: '🎾' },
+  { key: 'all',         label: 'Todos',      emoji: '🏪' },
+  { key: 'food',        label: 'Alimento',   emoji: '🍖' },
+  { key: 'medicine',    label: 'Medicina',   emoji: '💊' },
+  { key: 'hygiene',     label: 'Higiene',    emoji: '🧴' },
+  { key: 'toys',        label: 'Juguetes',   emoji: '🎾' },
   { key: 'accessories', label: 'Accesorios', emoji: '🎒' },
-  { key: 'clothing', label: 'Ropa', emoji: '👕' },
+  { key: 'clothing',    label: 'Ropa',       emoji: '👕' },
 ];
 
 export default function StoreScreen() {
@@ -48,8 +49,11 @@ export default function StoreScreen() {
   const [showCart, setShowCart] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const { width } = useWindowDimensions();
 
-  // Cargar productos desde Supabase
+  const isDesktop = width > 768;
+  const numColumns = isDesktop ? 3 : 2;
+
   useEffect(() => {
     loadProducts();
   }, []);
@@ -57,21 +61,15 @@ export default function StoreScreen() {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      console.log("=== CARGANDO PRODUCTOS ===");
-      
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('is_active', true)
         .order('name', { ascending: true });
-      
+
       if (error) {
         console.error('Error de Supabase:', error);
       } else {
-        console.log('Productos encontrados:', data?.length);
-        console.log('Primer producto:', JSON.stringify(data?.[0], null, 2));
-        
-        // Mapear los datos al formato esperado por la app
         const mappedProducts: Product[] = (data || []).map(item => ({
           id: String(item.id),
           name: item.name,
@@ -85,35 +83,38 @@ export default function StoreScreen() {
           image: item.image,
           createdAt: item.created_at,
         }));
-        
         setProducts(mappedProducts);
       }
     } catch (error) {
-      console.error('❌ Error cargando productos:', error);
+      console.error('Error cargando productos:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const filtered = useMemo(() => {
-    console.log('Filtrando productos, total:', products.length);
     let result = [...products];
-    
     if (category !== 'all') {
       result = result.filter(p => p.category === category);
     }
-    
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(p =>
-        p.name.toLowerCase().includes(q) || 
+        p.name.toLowerCase().includes(q) ||
         (p.brand && p.brand.toLowerCase().includes(q))
       );
     }
-    
-    console.log('Productos filtrados:', result.length);
     return result;
   }, [products, search, category]);
+
+  // Si el total de productos es impar, agrega un item vacío al final
+  // para evitar que el último card se estire y ocupe toda la fila
+  const displayData = useMemo(() => {
+    if (filtered.length % numColumns !== 0) {
+      return [...filtered, { id: '__placeholder__', isPlaceholder: true } as any];
+    }
+    return filtered;
+  }, [filtered, numColumns]);
 
   const handleCheckout = () => {
     Alert.alert(
@@ -123,9 +124,36 @@ export default function StoreScreen() {
     );
   };
 
-  const renderProduct = ({ item }: { item: Product }) => {
+  const renderCategoryChip = (c: typeof categories[0]) => {
+    const active = category === c.key;
+    return (
+      <TouchableOpacity
+        key={c.key}
+        style={[
+          styles.categoryChip,
+          {
+            backgroundColor: active ? Colors.primary : theme.surface,
+            borderColor: active ? Colors.primary : theme.border,
+          },
+        ]}
+        onPress={() => setCategory(c.key)}
+      >
+        <Text style={styles.categoryEmoji}>{c.emoji}</Text>
+        <Text style={[styles.categoryLabel, { color: active ? '#FFF' : theme.textSecondary }]}>
+          {c.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderProduct = ({ item }: { item: Product & { isPlaceholder?: boolean } }) => {
+    // Item fantasma: ocupa el espacio pero no se ve
+    // Mantiene la cuadrícula alineada cuando hay número impar de productos
+    if (item.isPlaceholder) {
+      return <View style={styles.productCardPlaceholder} />;
+    }
+
     const inCart = isInCart(item.id);
-    
     return (
       <Card style={styles.productCard}>
         <View style={[styles.productImage, { backgroundColor: `${Colors.primary}15` }]}>
@@ -175,7 +203,7 @@ export default function StoreScreen() {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
         <View style={styles.wrapper}>
-          <Text style={{ color: theme.text, textAlign: 'center', marginTop: 50 }}>
+          <Text style={[styles.loadingText, { color: theme.text }]}>
             Cargando productos...
           </Text>
         </View>
@@ -185,7 +213,7 @@ export default function StoreScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      <View style={styles.wrapper}>
+      <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>Tienda</Text>
           <TouchableOpacity
@@ -203,35 +231,21 @@ export default function StoreScreen() {
 
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar productos..." />
 
-        {/* Categories */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoriesScroll}
-          contentContainerStyle={styles.categoriesContent}
-        >
-          {categories.map(c => {
-            const active = category === c.key;
-            return (
-              <TouchableOpacity
-                key={c.key}
-                style={[
-                  styles.categoryChip,
-                  {
-                    backgroundColor: active ? Colors.primary : theme.surface,
-                    borderColor: active ? Colors.primary : theme.border,
-                  },
-                ]}
-                onPress={() => setCategory(c.key)}
-              >
-                <Text style={styles.categoryEmoji}>{c.emoji}</Text>
-                <Text style={[styles.categoryLabel, { color: active ? '#FFF' : theme.textSecondary }]}>
-                  {c.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {/* Desktop: wrap en múltiples filas | Mobile: scroll horizontal */}
+        {isDesktop ? (
+          <View style={styles.categoriesWrap}>
+            {categories.map(renderCategoryChip)}
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoriesScroll}
+            contentContainerStyle={styles.categoriesContent}
+          >
+            {categories.map(renderCategoryChip)}
+          </ScrollView>
+        )}
 
         {/* Cart Summary */}
         {showCart && cart.items.length > 0 && (
@@ -256,20 +270,27 @@ export default function StoreScreen() {
                 {formatCurrency(cart.total)}
               </Text>
             </View>
-            <Button title="Finalizar compra" onPress={handleCheckout} fullWidth size="sm" style={{ marginTop: 10 }} />
+            <Button
+              title="Finalizar compra"
+              onPress={handleCheckout}
+              fullWidth
+              size="sm"
+              style={styles.checkoutBtn}
+            />
           </Card>
         )}
 
         <FlatList
-          data={filtered}
+          data={displayData}
           keyExtractor={(item) => item.id}
           renderItem={renderProduct}
-          numColumns={Layout.isLargeDevice ? 3 : 2}
+          numColumns={numColumns}
+          key={numColumns}
           columnWrapperStyle={styles.productsRow}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 50 }}>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               No hay productos disponibles
             </Text>
           }
@@ -288,6 +309,10 @@ const styles = StyleSheet.create({
     maxWidth: Layout.maxWebWidth,
     width: '100%',
     alignSelf: 'center',
+  },
+  wrapperDesktop: {
+    padding: 32,
+    maxWidth: 1050,
   },
   header: {
     flexDirection: 'row',
@@ -320,6 +345,12 @@ const styles = StyleSheet.create({
   cartCountText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
   categoriesScroll: { marginBottom: 12, flexGrow: 0 },
   categoriesContent: { gap: 8 },
+  categoriesWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -328,9 +359,10 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.full,
     borderWidth: 1,
     gap: 6,
+    height: 44,
   },
-  categoryEmoji: { fontSize: 16 },
-  categoryLabel: { fontSize: Layout.fontSize.sm, fontWeight: '600' },
+  categoryEmoji: { fontSize: 14 },
+  categoryLabel: { fontSize: Layout.fontSize.sm, fontWeight: '600', lineHeight: 18 },
   cartSummary: { marginBottom: 12, padding: 14 },
   cartTitle: { fontSize: Layout.fontSize.md, fontWeight: '700', marginBottom: 8 },
   cartItem: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
@@ -340,14 +372,15 @@ const styles = StyleSheet.create({
   cartTotalRow: { flexDirection: 'row', justifyContent: 'space-between' },
   cartTotalLabel: { fontSize: Layout.fontSize.md, fontWeight: '700' },
   cartTotalValue: { fontSize: Layout.fontSize.lg, fontWeight: '800' },
+  checkoutBtn: { marginTop: 10 },
   list: { paddingBottom: 120 },
   productsRow: { gap: 12, marginBottom: 12 },
+  // Card real con contenido
   productCard: { flex: 1, padding: 0, overflow: 'hidden' },
-  productImage: {
-    height: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  // Card fantasma: mismo flex que productCard pero invisible
+  // Mantiene el grid alineado cuando hay número impar de productos
+  productCardPlaceholder: { flex: 1 },
+  productImage: { height: 100, alignItems: 'center', justifyContent: 'center' },
   productEmoji: { fontSize: 36 },
   productInfo: { padding: 12 },
   productBrand: { fontSize: Layout.fontSize.xs, fontWeight: '600', textTransform: 'uppercase' },
@@ -368,4 +401,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  loadingText: { textAlign: 'center', marginTop: 50 },
+  emptyText: { textAlign: 'center', marginTop: 50 },
 });

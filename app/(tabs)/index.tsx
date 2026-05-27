@@ -81,17 +81,20 @@ export default function DashboardScreen() {
                   <Ionicons name="shield-outline" size={20} color={Colors.primary} />
                 </TouchableOpacity>
               )}
-              {/* Theme Toggle */}
-              <TouchableOpacity
-                style={[styles.iconBtn, { backgroundColor: isDark ? Colors.primarySoft : theme.surfaceSecondary }]}
-                onPress={toggleTheme}
-              >
-                <Ionicons
-                  name={isDark ? 'sunny' : 'moon'}
-                  size={20}
-                  color={isDark ? Colors.primary : theme.textSecondary}
-                />
-              </TouchableOpacity>
+              {/* Toggle solo visible en mobile — en PC está en el sidebar */}
+                {!isDesktop && (
+                  <TouchableOpacity
+                    style={[styles.iconBtn, { backgroundColor: isDark ? Colors.primarySoft : theme.surfaceSecondary }]}
+                    onPress={toggleTheme}
+                  >
+                    <Ionicons
+                      name={isDark ? 'sunny' : 'moon'}
+                      size={20}
+                      
+                      color={isDark ? Colors.primary : theme.textSecondary}
+                    />
+                  </TouchableOpacity>
+                )}
               {/* Logout */}
               <TouchableOpacity
                 style={[styles.iconBtn, { backgroundColor: theme.surfaceSecondary }]}

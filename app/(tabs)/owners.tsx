@@ -1,14 +1,13 @@
+// ============================================
+// LAIKITA - Owners (Layout Desktop + Mobile)
+// ============================================
+
 import React, { useState, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  SafeAreaView,
-  Platform,
-  TouchableOpacity,
+  View, Text, StyleSheet, FlatList, SafeAreaView,
+  Platform, TouchableOpacity, useWindowDimensions,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
@@ -19,21 +18,16 @@ import SearchBar from '@/components/ui/SearchBar';
 import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
 import { getInitials, formatPhone } from '@/utils/formatters';
+import type { Owner } from '@/types';
 
 export default function OwnersScreen() {
   const theme = useThemeColors();
   const router = useRouter();
-  const { from } = useLocalSearchParams<{ from?: string }>();
   const { owners, getPetsByOwner } = useData();
   const [search, setSearch] = useState('');
+  const { width } = useWindowDimensions();
 
-  const goBack = () => {
-    if (from === 'admin') {
-      router.push('/(admin)');
-    } else {
-      router.back();
-    }
-  };
+  const isDesktop = width > 768;
 
   const filtered = useMemo(() => {
     if (!search) return owners;
@@ -47,10 +41,10 @@ export default function OwnersScreen() {
     );
   }, [owners, search]);
 
-  const renderOwner = ({ item }: { item: typeof owners[0] }) => {
+  const renderOwner = ({ item }: { item: Owner }) => {
     const petCount = getPetsByOwner(Number(item.id)).length;
     return (
-      <Card onPress={() => router.push(`/owner/${item.id}`)} style={styles.card}>
+      <Card onPress={() => router.push(`/owner/${item.id}` as any)} style={styles.card}>
         <View style={styles.row}>
           <View style={[styles.avatar, { backgroundColor: Colors.primarySoft }]}>
             <Text style={[styles.avatarText, { color: Colors.primaryDark }]}>
@@ -69,8 +63,17 @@ export default function OwnersScreen() {
             </Text>
           </View>
           <View style={styles.rightCol}>
-            <Badge text={`${petCount} mascota${petCount !== 1 ? 's' : ''}`} variant="primary" size="sm" />
-            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} style={{ marginTop: 8 }} />
+            <Badge
+              text={`${petCount} mascota${petCount !== 1 ? 's' : ''}`}
+              variant="primary"
+              size="sm"
+            />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={theme.textTertiary}
+              style={styles.chevron}
+            />
           </View>
         </View>
       </Card>
@@ -79,26 +82,35 @@ export default function OwnersScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      <View style={styles.wrapper}>
+      <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
+
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={theme.text} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: theme.text }]}>Dueños</Text>
           <TouchableOpacity
             style={[styles.addBtn, { backgroundColor: Colors.primary }]}
-            onPress={() => router.push('/owner/create')}
+            onPress={() => router.push('/owner/create' as any)}
           >
             <Ionicons name="add" size={24} color="#FFF" />
           </TouchableOpacity>
         </View>
 
-        <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar por nombre, cédula..." />
+        <SearchBar
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Buscar por nombre, cédula..."
+        />
 
         <FlatList
           data={filtered}
           keyExtractor={item => item.id}
           renderItem={renderOwner}
+          numColumns={isDesktop ? 2 : 1}
+          key={isDesktop ? 'desktop' : 'mobile'}
+          columnWrapperStyle={isDesktop ? styles.columnWrapper : undefined}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
@@ -107,7 +119,7 @@ export default function OwnersScreen() {
               title="Sin dueños registrados"
               description="Agrega el primer dueño para empezar a gestionar tu veterinaria"
               actionLabel="+ Agregar dueño"
-              onAction={() => router.push('/owner/create')}
+              onAction={() => router.push('/owner/create' as any)}
             />
           }
         />
@@ -126,6 +138,10 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  wrapperDesktop: {
+    padding: 32,
+    maxWidth: 1050,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -133,8 +149,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: Platform.OS === 'android' ? 16 : 0,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: Layout.fontSize.title, fontWeight: '800', flex: 1, textAlign: 'center' },
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: Layout.fontSize.title,
+    fontWeight: '800',
+    flex: 1,
+    textAlign: 'center',
+  },
   addBtn: {
     width: 42,
     height: 42,
@@ -142,8 +168,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  columnWrapper: {
+    gap: 12,
+    marginBottom: 12,
+  },
   list: { paddingBottom: 120, gap: 10 },
-  card: { marginBottom: 0 },
+  card: { marginBottom: 0, flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center' },
   avatar: {
     width: 50,
@@ -158,4 +188,5 @@ const styles = StyleSheet.create({
   name: { fontSize: Layout.fontSize.md, fontWeight: '600' },
   meta: { fontSize: Layout.fontSize.sm, marginTop: 2 },
   rightCol: { alignItems: 'flex-end' },
+  chevron: { marginTop: 8 },
 });

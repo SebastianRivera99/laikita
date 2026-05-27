@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   Platform,
   TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +28,10 @@ export default function PetsScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const { pets, getOwner } = useData();
   const [search, setSearch] = useState('');
+  const { width } = useWindowDimensions();
+
+  // Flag: true cuando la pantalla supera 768px (tablet/desktop)
+  const isDesktop = width > 768;
 
   const goBack = () => {
     if (from === 'admin') {
@@ -73,7 +78,7 @@ export default function PetsScreen() {
           </View>
           <View style={styles.rightCol}>
             <Badge text={speciesLabel[item.species as keyof typeof speciesLabel]} variant="primary" size="sm" />
-            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} style={{ marginTop: 8 }} />
+            <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} style={styles.chevron} />
           </View>
         </View>
       </Card>
@@ -82,7 +87,8 @@ export default function PetsScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      <View style={styles.wrapper}>
+      {/* wrapper cambia de maxWidth 480 a 1050 segun el tamaño de pantalla */}
+      <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={goBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={theme.text} />
@@ -102,6 +108,12 @@ export default function PetsScreen() {
           data={filtered}
           keyExtractor={item => item.id}
           renderItem={renderPet}
+          // En desktop: 2 columnas. En móvil: 1 columna
+          numColumns={isDesktop ? 2 : 1}
+          // key fuerza re-render cuando cambia numColumns (evita bug de React Native)
+          key={isDesktop ? 'desktop' : 'mobile'}
+          // columnWrapperStyle solo aplica cuando hay más de 1 columna
+          columnWrapperStyle={isDesktop ? styles.columnWrapper : undefined}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
@@ -121,6 +133,7 @@ export default function PetsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  // Estilo base: móvil, ancho máximo 480px centrado
   wrapper: {
     flex: 1,
     padding: Layout.spacing.lg,
@@ -128,6 +141,11 @@ const styles = StyleSheet.create({
     maxWidth: Layout.maxContentWidth,
     width: '100%',
     alignSelf: 'center',
+  },
+  // Estilo desktop: más padding y más ancho para aprovechar la pantalla
+  wrapperDesktop: {
+    padding: 32,
+    maxWidth: 1050,
   },
   header: {
     flexDirection: 'row',
@@ -145,8 +163,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Espacio entre las 2 columnas en desktop
+  columnWrapper: { gap: 12, marginBottom: 12 },
   list: { paddingBottom: 120, gap: 10 },
-  card: { marginBottom: 0 },
+  // flex: 1 hace que cada card ocupe el mismo ancho en su columna
+  card: { marginBottom: 0, flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center' },
   avatar: {
     width: 50,
@@ -162,4 +183,5 @@ const styles = StyleSheet.create({
   meta: { fontSize: Layout.fontSize.sm, marginTop: 2 },
   owner: { fontSize: Layout.fontSize.xs, marginTop: 2 },
   rightCol: { alignItems: 'flex-end' },
+  chevron: { marginTop: 8 },
 });

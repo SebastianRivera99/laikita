@@ -8,6 +8,7 @@ import {
   Platform,
   TouchableOpacity,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +44,10 @@ export default function TreatmentsScreen() {
   const { treatments, getPet } = useData();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<TreatmentStatus | 'all'>('all');
+  const { width } = useWindowDimensions();
+
+  // Flag: true cuando la pantalla supera 768px (tablet/desktop)
+  const isDesktop = width > 768;
 
   const goBack = () => {
     if (from === 'admin') {
@@ -120,7 +125,8 @@ export default function TreatmentsScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      <View style={styles.wrapper}>
+      {/* wrapper cambia de maxWidth 480 a 1050 segun el tamaño de pantalla */}
+      <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={goBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={theme.text} />
@@ -173,6 +179,12 @@ export default function TreatmentsScreen() {
           data={filtered}
           keyExtractor={item => item.id}
           renderItem={renderTreatment}
+          // En desktop: 2 columnas. En móvil: 1 columna
+          numColumns={isDesktop ? 2 : 1}
+          // key fuerza re-render cuando cambia numColumns (evita bug de React Native)
+          key={isDesktop ? 'desktop' : 'mobile'}
+          // columnWrapperStyle solo aplica cuando hay más de 1 columna
+          columnWrapperStyle={isDesktop ? styles.columnWrapper : undefined}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
@@ -192,6 +204,7 @@ export default function TreatmentsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  // Estilo base: móvil, ancho máximo 480px centrado
   wrapper: {
     flex: 1,
     padding: Layout.spacing.lg,
@@ -199,6 +212,11 @@ const styles = StyleSheet.create({
     maxWidth: Layout.maxContentWidth,
     width: '100%',
     alignSelf: 'center',
+  },
+  // Estilo desktop: más padding y más ancho para aprovechar la pantalla
+  wrapperDesktop: {
+    padding: 32,
+    maxWidth: 1050,
   },
   header: {
     flexDirection: 'row',
@@ -225,8 +243,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   filterLabel: { fontSize: Layout.fontSize.sm, fontWeight: '600' },
+  // Espacio entre las 2 columnas en desktop
+  columnWrapper: { gap: 12, marginBottom: 12 },
   list: { paddingBottom: 120, gap: 10 },
-  card: { marginBottom: 0 },
+  // flex: 1 hace que cada card ocupe el mismo ancho en su columna
+  card: { marginBottom: 0, flex: 1 },
   row: { flexDirection: 'row', alignItems: 'stretch' },
   typeIndicator: {
     width: 4,
