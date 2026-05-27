@@ -15,11 +15,13 @@ import {
   Alert,
   useWindowDimensions,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useCart } from '@/context/CartContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/lib/supabase';
 import Card from '@/components/ui/Card';
 import SearchBar from '@/components/ui/SearchBar';
@@ -43,7 +45,9 @@ const categories: { key: ProductCategory | 'all'; label: string; emoji: string }
 
 export default function StoreScreen() {
   const theme = useThemeColors();
+  const router = useRouter();
   const { addToCart, isInCart, cart, removeFromCart, clearCart, getItemCount } = useCart();
+  const { canManageProducts } = usePermissions(); // Solo admin e inventory pueden gestionar productos
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<ProductCategory | 'all'>('all');
   const [showCart, setShowCart] = useState(false);
@@ -216,17 +220,28 @@ export default function StoreScreen() {
       <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>Tienda</Text>
-          <TouchableOpacity
-            style={[styles.cartIcon, { backgroundColor: theme.surfaceSecondary }]}
-            onPress={() => setShowCart(!showCart)}
-          >
-            <Ionicons name="cart" size={22} color={theme.text} />
-            {getItemCount() > 0 && (
-              <View style={styles.cartCountBadge}>
-                <Text style={styles.cartCountText}>{getItemCount()}</Text>
-              </View>
+          <View style={styles.headerRight}>
+            {/* Botón de gestión de productos - solo admin e inventory */}
+            {canManageProducts && (
+              <TouchableOpacity
+                style={[styles.manageBtn, { backgroundColor: theme.surfaceSecondary }]}
+                onPress={() => router.push('/(admin)/products')}
+              >
+                <Ionicons name="settings-outline" size={22} color={theme.text} />
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.cartIcon, { backgroundColor: theme.surfaceSecondary }]}
+              onPress={() => setShowCart(!showCart)}
+            >
+              <Ionicons name="cart" size={22} color={theme.text} />
+              {getItemCount() > 0 && (
+                <View style={styles.cartCountBadge}>
+                  <Text style={styles.cartCountText}>{getItemCount()}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar productos..." />
@@ -321,7 +336,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: Platform.OS === 'android' ? 16 : 0,
   },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   title: { fontSize: Layout.fontSize.title, fontWeight: '800' },
+  manageBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cartIcon: {
     width: 42,
     height: 42,
@@ -375,10 +401,7 @@ const styles = StyleSheet.create({
   checkoutBtn: { marginTop: 10 },
   list: { paddingBottom: 120 },
   productsRow: { gap: 12, marginBottom: 12 },
-  // Card real con contenido
   productCard: { flex: 1, padding: 0, overflow: 'hidden' },
-  // Card fantasma: mismo flex que productCard pero invisible
-  // Mantiene el grid alineado cuando hay número impar de productos
   productCardPlaceholder: { flex: 1 },
   productImage: { height: 100, alignItems: 'center', justifyContent: 'center' },
   productEmoji: { fontSize: 36 },

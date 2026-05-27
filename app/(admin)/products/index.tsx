@@ -7,8 +7,8 @@ import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { supabase } from '@/lib/supabase';
 import Card from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
 import { formatCurrency } from '@/utils/formatters';
+import { Platform } from 'react-native';
 
 interface Product {
   id: number;
@@ -38,7 +38,7 @@ export default function AdminProductsScreen() {
       if (error) throw error;
       setProducts(data || []);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error cargando productos:', error);
       Alert.alert('Error', 'No se pudieron cargar los productos');
     } finally {
       setLoading(false);
@@ -51,25 +51,66 @@ export default function AdminProductsScreen() {
     }, [])
   );
 
-  const handleDelete = async (id: number) => {
-    Alert.alert('Eliminar', '¿Eliminar este producto?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const { error } = await supabase.from('products').delete().eq('id', id);
-            if (error) throw error;
-            await loadProducts();
-            Alert.alert('Éxito', 'Producto eliminado correctamente');
-          } catch (error: any) {
-            Alert.alert('Error', error.message);
-          }
-        },
-      },
-    ]);
+  const handleDelete = (id: number, productName: string) => {
+  // Detectar si es web o móvil
+  const isWeb = Platform.OS === 'web';
+  
+  const confirmDelete = () => {
+    // Mostrar confirmación según la plataforma
+    if (isWeb) {
+      return window.confirm(`¿Eliminar "${productName}"? Esta acción no se puede deshacer.`);
+    } else {
+      // Para móvil usamos una promesa con Alert.alert
+      return new Promise((resolve) => {
+        Alert.alert(
+          'Eliminar producto',
+          `¿Eliminar "${productName}"?`,
+          [
+            { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+          ]
+        );
+      });
+    }
   };
+
+  // Ejecutar confirmación y luego eliminar
+  const doDelete = async () => {
+    try {
+      console.log('Eliminando producto ID:', id);
+      
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== id));
+      alert(`"${productName}" eliminado correctamente`);
+    } catch (error: any) {
+      console.error('Error:', error);
+      alert('Error: ' + error.message);
+    }
+  };
+
+  // Para web: confirmación sincrónica
+  if (isWeb) {
+    if (window.confirm(`¿Eliminar "${productName}"? Esta acción no se puede deshacer.`)) {
+      doDelete();
+    }
+  } else {
+    // Para móvil: alerta asincrónica
+    Alert.alert(
+      'Eliminar producto',
+      `¿Eliminar "${productName}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: doDelete }
+      ]
+    );
+  }
+};
 
   const toggleActive = async (id: number, currentStatus: boolean) => {
     try {
@@ -119,7 +160,7 @@ export default function AdminProductsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: Colors.errorSoft }]}
-            onPress={() => handleDelete(item.id)}
+            onPress={() => handleDelete(item.id, item.name)}
           >
             <Ionicons name="trash-outline" size={20} color={Colors.error} />
           </TouchableOpacity>
@@ -131,7 +172,7 @@ export default function AdminProductsScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(admin)')} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.replace('/(admin)')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Gestionar Productos</Text>

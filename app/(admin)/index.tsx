@@ -18,9 +18,11 @@ export default function AdminDashboard() {
   const { isDark, toggleTheme } = useTheme();
   const { owners, pets, treatments } = useData();
   const [productsCount, setProductsCount] = useState(0);
+  const [usersCount, setUsersCount] = useState(0);
 
   useEffect(() => {
     loadProductsCount();
+    loadUsersCount();
   }, []);
 
   const loadProductsCount = async () => {
@@ -36,12 +38,26 @@ export default function AdminDashboard() {
     }
   };
 
-  const menuItems = [
-    { key: 'products', title: 'Productos', icon: 'cart-outline', color: Colors.primary, route: '/(admin)/products' },
-    { key: 'owners', title: 'Dueños', icon: 'people-outline', color: Colors.secondary, route: '/(tabs)/owners?from=admin' },
-    { key: 'pets', title: 'Mascotas', icon: 'paw-outline', color: Colors.accent, route: '/(tabs)/pets?from=admin' },
-    { key: 'treatments', title: 'Citas', icon: 'medkit-outline', color: Colors.info, route: '/(tabs)/treatments?from=admin' },
-  ];
+  const loadUsersCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) throw error;
+      setUsersCount(count || 0);
+    } catch (error) {
+      console.error('Error cargando usuarios:', error);
+    }
+  };
+
+const menuItems = [
+  { key: 'users', title: 'Usuarios', icon: 'people-outline' as const, color: Colors.error, route: '/(admin)/users' },
+  { key: 'products', title: 'Productos', icon: 'cart-outline' as const, color: Colors.primary, route: '/(admin)/products' },
+  { key: 'owners', title: 'Dueños', icon: 'people-outline' as const, color: Colors.secondary, route: '/(tabs)/owners?from=admin' },
+  { key: 'pets', title: 'Mascotas', icon: 'paw-outline' as const, color: Colors.accent, route: '/(tabs)/pets?from=admin' },
+  { key: 'treatments', title: 'Citas', icon: 'medkit-outline' as const, color: Colors.info, route: '/(tabs)/treatments?from=admin' },
+];
 
   const pendingTreatments = treatments.filter(t => t.status === 'scheduled').length;
 
@@ -83,28 +99,41 @@ export default function AdminDashboard() {
           </View>
 
           <View style={styles.statsRow}>
+            <Card style={[styles.statCard, { borderLeftColor: Colors.error, borderLeftWidth: 3 }]}>
+              <Ionicons name="people-outline" size={24} color={Colors.error} />
+              <Text style={[styles.statNumber, { color: theme.text }]}>{usersCount}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Usuarios</Text>
+            </Card>
             <Card style={[styles.statCard, { borderLeftColor: Colors.primary, borderLeftWidth: 3 }]}>
               <Ionicons name="cart-outline" size={24} color={Colors.primary} />
               <Text style={[styles.statNumber, { color: theme.text }]}>{productsCount}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Productos</Text>
             </Card>
+          </View>
+
+          <View style={styles.statsRow}>
             <Card style={[styles.statCard, { borderLeftColor: Colors.secondary, borderLeftWidth: 3 }]}>
               <Ionicons name="people-outline" size={24} color={Colors.secondary} />
               <Text style={[styles.statNumber, { color: theme.text }]}>{owners.length}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Dueños</Text>
             </Card>
-          </View>
-
-          <View style={styles.statsRow}>
             <Card style={[styles.statCard, { borderLeftColor: Colors.accent, borderLeftWidth: 3 }]}>
               <Ionicons name="paw-outline" size={24} color={Colors.accent} />
               <Text style={[styles.statNumber, { color: theme.text }]}>{pets.length}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Mascotas</Text>
             </Card>
+          </View>
+
+          <View style={styles.statsRow}>
             <Card style={[styles.statCard, { borderLeftColor: Colors.info, borderLeftWidth: 3 }]}>
               <Ionicons name="calendar-outline" size={24} color={Colors.info} />
               <Text style={[styles.statNumber, { color: theme.text }]}>{pendingTreatments}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Citas Pendientes</Text>
+            </Card>
+            <Card style={[styles.statCard, { borderLeftColor: Colors.warning, borderLeftWidth: 3 }]}>
+              <Ionicons name="archive-outline" size={24} color={Colors.warning} />
+              <Text style={[styles.statNumber, { color: theme.text }]}>0</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Inventario</Text>
             </Card>
           </View>
 

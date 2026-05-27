@@ -42,7 +42,7 @@ export default function CreateProductScreen() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from('products').insert({
+      const insertData = {
         name: form.name.trim(),
         description: form.description.trim() || null,
         category: form.category,
@@ -50,15 +50,17 @@ export default function CreateProductScreen() {
         stock: parseInt(form.stock) || 0,
         brand: form.brand.trim() || null,
         is_active: true,
-      });
+      };
+
+      const { error } = await supabase.from('products').insert(insertData);
 
       if (error) throw error;
 
-      Alert.alert('Éxito', 'Producto creado correctamente', [
-        { text: 'OK', onPress: () => router.push('/(admin)/products') }
-      ]);
+      // Redirigir directamente sin alerta
+      router.replace('/(admin)/products');
+      
     } catch (error: any) {
-      console.error('Error:', error);
+      console.error('Error creando:', error);
       Alert.alert('Error', error.message || 'No se pudo crear el producto');
     } finally {
       setLoading(false);

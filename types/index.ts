@@ -7,7 +7,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'vet' | 'receptionist';
+  role: 'admin' | 'vet' | 'inventory' | 'receptionist';
   avatar?: string;
   createdAt: string;
 }
@@ -151,4 +151,16 @@ export interface TabRoute {
   name: string;
   title: string;
   icon: string;
+}
+
+// --- User Management ---
+export interface UserWithDetails extends User {
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoleOption {
+  value: 'admin' | 'vet' | 'inventory' | 'receptionist';
+  label: string;
+  color: string;
 }

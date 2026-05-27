@@ -1,3 +1,7 @@
+// ============================================
+// LAIKITA - Permissions Hook
+// ============================================
+
 import { useAuth } from '@/context/AuthContext';
 
 export function usePermissions() {
@@ -5,21 +9,40 @@ export function usePermissions() {
   
   const isAdmin = user?.role === 'admin';
   const isVet = user?.role === 'vet';
+  const isInventory = user?.role === 'inventory';
   const isReceptionist = user?.role === 'receptionist';
   
-  const canEdit = isAdmin;
-  const canDelete = isAdmin;
-  const canCreate = isAdmin || isVet || isReceptionist;
-  const canView = true;
+  // Permisos generales
+  const canView = isAdmin || isVet || isReceptionist;
+  const canCreate = isAdmin || isReceptionist;
+  const canEdit = isAdmin || isReceptionist;
+  const canDelete = isAdmin || isReceptionist;
+  
+  // Permiso especial para cambiar estado de citas (solo admin y vet)
+  const canChangeTreatmentStatus = isAdmin || isVet;
+  
+  // Permisos de productos (admin e inventory)
+  const canManageProducts = isAdmin || isInventory;
+  
+  // Acceso a panel admin (solo admin)
+  const canAccessAdminPanel = isAdmin;
+  
+  // Gestión de usuarios (solo admin)
+  const canManageUsers = isAdmin;
   
   return {
     isAdmin,
     isVet,
+    isInventory,
     isReceptionist,
+    canView,
+    canCreate,
     canEdit,
     canDelete,
-    canCreate,
-    canView,
+    canChangeTreatmentStatus,
+    canManageProducts,
+    canAccessAdminPanel,
+    canManageUsers,
     role: user?.role,
   };
 }

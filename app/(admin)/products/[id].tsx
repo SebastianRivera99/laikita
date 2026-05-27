@@ -80,24 +80,26 @@ export default function EditProductScreen() {
 
     setSaving(true);
     try {
+      const updateData = {
+        name: form.name.trim(),
+        description: form.description.trim() || null,
+        category: form.category,
+        price: parseFloat(form.price),
+        stock: parseInt(form.stock) || 0,
+        brand: form.brand.trim() || null,
+        is_active: form.is_active,
+      };
+
       const { error } = await supabase
         .from('products')
-        .update({
-          name: form.name.trim(),
-          description: form.description.trim() || null,
-          category: form.category,
-          price: parseFloat(form.price),
-          stock: parseInt(form.stock) || 0,
-          brand: form.brand.trim() || null,
-          is_active: form.is_active,
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
 
-      Alert.alert('Éxito', 'Producto actualizado correctamente', [
-        { text: 'OK', onPress: () => router.push('/(admin)/products') }
-      ]);
+      // Redirigir directamente sin alerta
+      router.replace('/(admin)/products');
+      
     } catch (error: any) {
       console.error('Error:', error);
       Alert.alert('Error', error.message || 'No se pudo actualizar el producto');
