@@ -1,5 +1,5 @@
 // ============================================
-// LAIKITA - Pet Detail Screen
+// LAIKITA - Pet Detail Screen (con permisos)
 // ============================================
 
 import React from 'react';
@@ -18,6 +18,7 @@ import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useData } from '@/context/DataContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -35,8 +36,9 @@ export default function PetDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getPet, getOwner, deletePet, getTreatmentsByPet } = useData();
+  const { canEdit, canDelete } = usePermissions();
 
-  const pet = getPet(id!);
+  const pet = getPet(Number(id));
   if (!pet) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
@@ -45,8 +47,8 @@ export default function PetDetailScreen() {
     );
   }
 
-  const owner = getOwner(pet.ownerId);
-  const petTreatments = getTreatmentsByPet(pet.id);
+  const owner = getOwner(Number(pet.ownerId));
+  const petTreatments = getTreatmentsByPet(Number(pet.id));
 
   const handleDelete = () => {
     Alert.alert('Eliminar mascota', `¿Eliminar a ${pet.name}?`, [
@@ -54,7 +56,7 @@ export default function PetDetailScreen() {
       {
         text: 'Eliminar',
         style: 'destructive',
-        onPress: () => { deletePet(pet.id); router.back(); },
+        onPress: () => { deletePet(Number(pet.id)); router.back(); },
       },
     ]);
   };
@@ -69,22 +71,26 @@ export default function PetDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Detalle mascota</Text>
-        <TouchableOpacity onPress={handleDelete} style={styles.backBtn}>
-          <Ionicons name="trash-outline" size={22} color={Colors.error} />
-        </TouchableOpacity>
+        {/* Solo admin ve el botón de eliminar */}
+        {canDelete && (
+          <TouchableOpacity onPress={handleDelete} style={styles.backBtn}>
+            <Ionicons name="trash-outline" size={22} color={Colors.error} />
+          </TouchableOpacity>
+        )}
+        {!canDelete && <View style={{ width: 40 }} />}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.wrapper}>
           {/* Profile */}
           <Card style={styles.profileCard}>
-            <View style={[styles.avatar, { backgroundColor: `${Colors.speciesColors[pet.species]}20` }]}>
-              <Text style={styles.avatarEmoji}>{speciesEmoji[pet.species]}</Text>
+            <View style={[styles.avatar, { backgroundColor: `${Colors.speciesColors[pet.species as keyof typeof Colors.speciesColors]}20` }]}>
+              <Text style={styles.avatarEmoji}>{speciesEmoji[pet.species as keyof typeof speciesEmoji]}</Text>
             </View>
             <Text style={[styles.petName, { color: theme.text }]}>{pet.name}</Text>
             <Text style={[styles.petBreed, { color: theme.textSecondary }]}>{pet.breed}</Text>
             <View style={styles.badgesRow}>
-              <Badge text={speciesLabel[pet.species]} variant="primary" size="sm" />
+              <Badge text={speciesLabel[pet.species as keyof typeof speciesLabel]} variant="primary" size="sm" />
               <Badge text={genderLabel} variant="secondary" size="sm" />
               <Badge text={sizeLabel} variant="neutral" size="sm" />
             </View>
@@ -143,11 +149,11 @@ export default function PetDetailScreen() {
           {petTreatments.map(t => (
             <Card key={t.id} onPress={() => router.push(`/treatment/${t.id}` as any)} style={{ marginBottom: 8 }}>
               <View style={styles.treatmentRow}>
-                <View style={[styles.treatmentDot, { backgroundColor: Colors.treatmentColors[t.type] }]} />
+                <View style={[styles.treatmentDot, { backgroundColor: Colors.treatmentColors[t.type as keyof typeof Colors.treatmentColors] }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.treatmentTitle, { color: theme.text }]}>{t.title}</Text>
                   <Text style={[styles.treatmentMeta, { color: theme.textSecondary }]}>
-                    {formatDate(t.date)} • {treatmentTypeLabel[t.type]}
+                    {formatDate(t.date)} • {treatmentTypeLabel[t.type as keyof typeof treatmentTypeLabel]}
                   </Text>
                 </View>
                 <Text style={[styles.treatmentCost, { color: Colors.primary }]}>
@@ -160,10 +166,21 @@ export default function PetDetailScreen() {
           <Button
             title="+ Nueva cita"
             variant="outline"
-            onPress={() => router.push('/treatment/create' as any)}
+            onPress={() => router.push('/treatment/create')}
             fullWidth
             style={{ marginTop: 8 }}
           />
+
+          {/* Botón de editar - Solo visible para admin */}
+          {canEdit && (
+            <Button
+              title="Editar mascota"
+              variant="primary"
+              onPress={() => router.push(`/pet/edit/${pet.id}`)}
+              fullWidth
+              style={{ marginTop: 8 }}
+            />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

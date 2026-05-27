@@ -1,5 +1,5 @@
 // ============================================
-// LAIKITA - Owner Detail Screen
+// LAIKITA - Owner Detail Screen (con permisos)
 // ============================================
 
 import React from 'react';
@@ -18,6 +18,7 @@ import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useData } from '@/context/DataContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -28,8 +29,9 @@ export default function OwnerDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getOwner, deleteOwner, getPetsByOwner, getTreatmentsByOwner } = useData();
+  const { canEdit, canDelete } = usePermissions();
 
-  const owner = getOwner(id!);
+  const owner = getOwner(Number(id));
   if (!owner) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
@@ -38,8 +40,8 @@ export default function OwnerDetailScreen() {
     );
   }
 
-  const ownerPets = getPetsByOwner(owner.id);
-  const ownerTreatments = getTreatmentsByOwner(owner.id);
+  const ownerPets = getPetsByOwner(Number(owner.id));
+  const ownerTreatments = getTreatmentsByOwner(Number(owner.id));
 
   const handleDelete = () => {
     Alert.alert(
@@ -51,7 +53,7 @@ export default function OwnerDetailScreen() {
           text: 'Eliminar',
           style: 'destructive',
           onPress: () => {
-            deleteOwner(owner.id);
+            deleteOwner(Number(owner.id));
             router.back();
           },
         },
@@ -67,9 +69,13 @@ export default function OwnerDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Detalle del dueño</Text>
-        <TouchableOpacity onPress={handleDelete} style={styles.backBtn}>
-          <Ionicons name="trash-outline" size={22} color={Colors.error} />
-        </TouchableOpacity>
+        {/* Solo admin ve el botón de eliminar */}
+        {canDelete && (
+          <TouchableOpacity onPress={handleDelete} style={styles.backBtn}>
+            <Ionicons name="trash-outline" size={22} color={Colors.error} />
+          </TouchableOpacity>
+        )}
+        {!canDelete && <View style={{ width: 40 }} />}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -118,11 +124,11 @@ export default function OwnerDetailScreen() {
           {ownerPets.map(pet => (
             <Card key={pet.id} onPress={() => router.push(`/pet/${pet.id}` as any)} style={styles.petCard}>
               <View style={styles.petRow}>
-                <Text style={styles.petEmoji}>{speciesEmoji[pet.species]}</Text>
+                <Text style={styles.petEmoji}>{speciesEmoji[pet.species as keyof typeof speciesEmoji]}</Text>
                 <View style={styles.petInfo}>
                   <Text style={[styles.petName, { color: theme.text }]}>{pet.name}</Text>
                   <Text style={[styles.petMeta, { color: theme.textSecondary }]}>
-                    {pet.breed} • {speciesLabel[pet.species]}
+                    {pet.breed} • {speciesLabel[pet.species as keyof typeof speciesLabel]}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
@@ -133,10 +139,21 @@ export default function OwnerDetailScreen() {
           <Button
             title="+ Agregar mascota"
             variant="outline"
-            onPress={() => router.push('/pet/create' as any)}
+            onPress={() => router.push('/pet/create')}
             fullWidth
             style={{ marginTop: 8 }}
           />
+
+          {/* Botón de editar - Solo visible para admin */}
+          {canEdit && (
+            <Button
+              title="Editar dueño"
+              variant="primary"
+              onPress={() => router.push(`/owner/edit/${owner.id}`)}
+              fullWidth
+              style={{ marginTop: 8 }}
+            />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

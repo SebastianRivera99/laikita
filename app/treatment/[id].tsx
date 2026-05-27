@@ -1,5 +1,5 @@
 // ============================================
-// LAIKITA - Treatment Detail Screen
+// LAIKITA - Treatment Detail Screen (con permisos)
 // ============================================
 
 import React from 'react';
@@ -18,6 +18,7 @@ import { Colors } from '@/constants/Colors';
 import { Layout } from '@/constants/Layout';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useData } from '@/context/DataContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -35,6 +36,7 @@ export default function TreatmentDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getTreatment, updateTreatment, deleteTreatment, getPet, getOwner } = useData();
+  const { canEdit, canDelete } = usePermissions();
 
   // Convertir ID a número
   const treatmentId = Number(id);
@@ -107,9 +109,13 @@ export default function TreatmentDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Detalle cita</Text>
-        <TouchableOpacity onPress={handleDelete} style={styles.backBtn}>
-          <Ionicons name="trash-outline" size={22} color={Colors.error} />
-        </TouchableOpacity>
+        {/* Solo admin ve el botón de eliminar */}
+        {canDelete && (
+          <TouchableOpacity onPress={handleDelete} style={styles.backBtn}>
+            <Ionicons name="trash-outline" size={22} color={Colors.error} />
+          </TouchableOpacity>
+        )}
+        {!canDelete && <View style={{ width: 40 }} />}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -201,7 +207,7 @@ export default function TreatmentDetailScreen() {
             </Card>
           ) : null}
 
-          {/* Status Actions */}
+          {/* Status Actions - Visible para admin y vet */}
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Cambiar estado</Text>
           <View style={styles.statusActions}>
             {treatment.status !== 'in_progress' && treatment.status !== 'completed' && (
@@ -228,6 +234,17 @@ export default function TreatmentDetailScreen() {
               />
             )}
           </View>
+
+          {/* Botón de editar - Solo visible para admin */}
+          {canEdit && (
+            <Button
+              title="Editar cita"
+              variant="primary"
+              onPress={() => router.push(`/treatment/edit/${treatment.id}`)}
+              fullWidth
+              style={{ marginTop: 8 }}
+            />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
