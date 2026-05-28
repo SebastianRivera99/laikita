@@ -4,14 +4,8 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  SafeAreaView,
-  Platform,
-  TouchableOpacity,
-  Alert,
+  View, Text, StyleSheet, FlatList, SafeAreaView,
+  Platform, TouchableOpacity, Alert, useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,17 +31,19 @@ export default function PetsScreen() {
   const { canViewPets, canCreatePets, canEditPets, canDeletePets } = usePermissions();
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const { width } = useWindowDimensions();
+  const isDesktop = width > 768;
 
   if (!canViewPets) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-        <View style={styles.wrapper}>
+        <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={goBack} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={24} color={theme.text} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: theme.text }]}>Mascotas</Text>
-            <View style={{ width: 40 }} />
+            <View style={styles.placeholder} />
           </View>
           <View style={styles.noAccessContainer}>
             <Ionicons name="lock-closed-outline" size={64} color={theme.textTertiary} />
@@ -96,13 +92,9 @@ export default function PetsScreen() {
 
   const renderPet = ({ item }: { item: Pet }) => {
     const owner = getOwner(Number(item.ownerId));
-    
     return (
       <Card style={styles.card}>
-        <TouchableOpacity 
-          activeOpacity={0.7}
-          onPress={() => router.push(`/pet/${item.id}`)}
-        >
+        <TouchableOpacity activeOpacity={0.7} onPress={() => router.push(`/pet/${item.id}`)}>
           <View style={styles.row}>
             <View
               style={[
@@ -125,27 +117,26 @@ export default function PetsScreen() {
             </View>
             <View style={styles.rightCol}>
               <Badge text={speciesLabel[item.species as keyof typeof speciesLabel]} variant="primary" size="sm" />
-              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} style={{ marginTop: 8 }} />
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} style={styles.chevron} />
             </View>
           </View>
         </TouchableOpacity>
-        
-        {/* Botones de acción - solo admin puede editar/eliminar */}
+
         {canEditPets && (
           <View style={[styles.actionButtons, { borderTopColor: theme.borderLight }]}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: Colors.primarySoft }]}
               onPress={() => router.push(`/pet/edit/${item.id}`)}
             >
               <Ionicons name="create-outline" size={18} color={Colors.primary} />
-              <Text style={{ fontSize: 12, color: Colors.primary }}>Editar</Text>
+              <Text style={styles.actionBtnTextPrimary}>Editar</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: Colors.errorSoft }]}
               onPress={() => handleDelete(Number(item.id), item.name)}
             >
               <Ionicons name="trash-outline" size={18} color={Colors.error} />
-              <Text style={{ fontSize: 12, color: Colors.error }}>Eliminar</Text>
+              <Text style={styles.actionBtnTextError}>Eliminar</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -155,21 +146,22 @@ export default function PetsScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
-      <View style={styles.wrapper}>
+      <View style={[styles.wrapper, isDesktop && styles.wrapperDesktop]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={goBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={theme.text} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: theme.text }]}>Mascotas</Text>
-          {canCreatePets && (
+          {canCreatePets ? (
             <TouchableOpacity
               style={[styles.addBtn, { backgroundColor: Colors.secondary }]}
               onPress={() => router.push('/pet/create')}
             >
               <Ionicons name="add" size={24} color="#FFF" />
             </TouchableOpacity>
+          ) : (
+            <View style={styles.placeholder} />
           )}
-          {!canCreatePets && <View style={{ width: 40 }} />}
         </View>
 
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar por nombre, raza..." />
@@ -178,6 +170,9 @@ export default function PetsScreen() {
           data={filtered}
           keyExtractor={item => item.id}
           renderItem={renderPet}
+          numColumns={isDesktop ? 2 : 1}
+          key={isDesktop ? 'desktop' : 'mobile'}
+          columnWrapperStyle={isDesktop ? styles.columnWrapper : undefined}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           refreshing={loading}
@@ -207,6 +202,10 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  wrapperDesktop: {
+    padding: 32,
+    maxWidth: 1050,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -215,31 +214,21 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS === 'android' ? 16 : 0,
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  placeholder: { width: 40 },
   title: { fontSize: Layout.fontSize.title, fontWeight: '800', flex: 1, textAlign: 'center' },
-  addBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  addBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  columnWrapper: { gap: 12, marginBottom: 12 },
   list: { paddingBottom: 120, gap: 10 },
-  card: { marginBottom: 0, padding: Layout.spacing.md },
+  card: { marginBottom: 0, padding: Layout.spacing.md, flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center' },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
+  avatar: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   emoji: { fontSize: 24 },
   info: { flex: 1 },
   name: { fontSize: Layout.fontSize.md, fontWeight: '600' },
   meta: { fontSize: Layout.fontSize.sm, marginTop: 2 },
   owner: { fontSize: Layout.fontSize.xs, marginTop: 2 },
   rightCol: { alignItems: 'flex-end' },
+  chevron: { marginTop: 8 },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -248,14 +237,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
   },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  actionBtnTextPrimary: { fontSize: 12, color: Colors.primary },
+  actionBtnTextError: { fontSize: 12, color: Colors.error },
   noAccessContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
   noAccessText: { fontSize: Layout.fontSize.lg, textAlign: 'center' },
 });
